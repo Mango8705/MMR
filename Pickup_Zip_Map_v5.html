@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>MMR Broker Pickups by Zip Code — Top 20</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<style>
+  html,body{margin:0;height:100%;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#1f2937;}
+  #wrap{display:flex;height:100vh;}
+  #map{flex:1;height:100%;}
+  #side{width:380px;overflow-y:auto;border-left:1px solid #e5e7eb;padding:16px;box-sizing:border-box;background:#fafafa;}
+  h1{font-size:16px;margin:0 0 4px;}
+  .sub{font-size:12px;color:#6b7280;margin:0 0 14px;}
+  table{width:100%;border-collapse:collapse;font-size:13px;}
+  th,td{text-align:left;padding:5px 6px;border-bottom:1px solid #eee;}
+  th{color:#6b7280;font-weight:600;font-size:11px;text-transform:uppercase;}
+  td.n{text-align:right;font-variant-numeric:tabular-nums;}
+  tr.top{font-weight:600;cursor:pointer;}
+  tr.top:hover{background:#eaf6ed;}
+  tr.top.active{background:#d4eedd;outline:2px solid #238b45;}
+  .ziplink{color:#0b6b33;text-decoration:underline;}
+  #status{font-size:12px;color:#6b7280;padding:6px 0;}
+  .hint{font-size:11.5px;color:#9ca3af;margin:4px 0 10px;}
+  .legend{line-height:18px;font-size:12px;background:#fff;padding:8px 10px;border-radius:6px;box-shadow:0 1px 4px rgba(0,0,0,.2);}
+  .legend i{width:14px;height:14px;float:left;margin-right:6px;opacity:.9;}
+  .swatch{display:inline-block;width:11px;height:11px;border-radius:2px;margin-right:6px;vertical-align:middle;border:1px solid rgba(0,0,0,.15);}
+  .ziplabel{background:rgba(255,255,255,.82);border:1px solid rgba(0,69,31,.45);border-radius:5px;
+            padding:2px 5px;text-align:center;line-height:1.25;white-space:nowrap;
+            box-shadow:0 1px 2px rgba(0,0,0,.18);}
+  .ziplabel .z{font-weight:700;font-size:11px;color:#00351a;}
+  .ziplabel .d{font-size:10px;color:#214a33;font-variant-numeric:tabular-nums;}
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div id="map"></div>
+  <div id="side">
+    <h1>Broker Pickups by Zip Code</h1>
+    <p class="sub">MMR &middot; Broker trips only (Alivi, ModivCare, Ride2MD, SafeRide) &middot; Mar 16 – Jun 15, 2026 &middot; 3,706 trips. Top 20 zips shaded green (darker = more trips); details labeled inside each.</p>
+    <div id="status">Loading zip-code boundaries…</div>
+    <p class="hint">Tip: click a zip code in the list to highlight and zoom to it on the map.</p>
+    <table id="tbl"><thead><tr><th>#</th><th>Zip</th><th class="n">Trips</th><th class="n">Revenue</th><th class="n">Rev/Trip</th></tr></thead><tbody></tbody></table>
+  </div>
+</div>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+const DATA = {"33705":{"n":309,"rev":9999.71},"34689":{"n":242,"rev":8795.47},"33756":{"n":228,"rev":7644.01},"34698":{"n":213,"rev":8692.42},"33711":{"n":193,"rev":7011.61},"33782":{"n":179,"rev":5461.56},"33763":{"n":146,"rev":2377.35},"33714":{"n":142,"rev":4720.37},"33761":{"n":138,"rev":3393.12},"33701":{"n":122,"rev":4375.73},"33774":{"n":111,"rev":2587.52},"34684":{"n":109,"rev":3664.6},"33771":{"n":102,"rev":3347.37},"33781":{"n":97,"rev":3370.21},"33755":{"n":96,"rev":3171.89},"33712":{"n":95,"rev":3021.44},"33759":{"n":85,"rev":3114.17},"33709":{"n":83,"rev":2428.88},"33707":{"n":82,"rev":2782.07},"33773":{"n":79,"rev":3091.62},"33702":{"n":79,"rev":3927.36},"33710":{"n":79,"rev":2718.37},"33770":{"n":79,"rev":2497.11},"33765":{"n":65,"rev":2429.17},"33777":{"n":63,"rev":2410.07},"33713":{"n":59,"rev":1858.54},"33778":{"n":57,"rev":1527.97},"33760":{"n":43,"rev":1248.82},"33772":{"n":42,"rev":1416.37},"34683":{"n":41,"rev":995.13},"33764":{"n":38,"rev":1227.12},"34695":{"n":34,"rev":1157.59},"34653":{"n":21,"rev":1165.79},"33716":{"n":20,"rev":710.46},"33704":{"n":18,"rev":546.45},"34685":{"n":17,"rev":575.13},"34655":{"n":13,"rev":727.07},"95709":{"n":8,"rev":454.88},"34652":{"n":8,"rev":273.25},"33762":{"n":8,"rev":277.68},"33776":{"n":8,"rev":247.02},"33744":{"n":7,"rev":306.28},"33703":{"n":6,"rev":110.4},"34677":{"n":6,"rev":180.86},"34668":{"n":3,"rev":157.92},"33609":{"n":3,"rev":226.03},"34691":{"n":3,"rev":100.2},"33625":{"n":3,"rev":190.0},"33602":{"n":3,"rev":183.64},"33715":{"n":2,"rev":99.28},"33606":{"n":2,"rev":104.73},"34654":{"n":2,"rev":84.18},"33708":{"n":2,"rev":49.2},"33607":{"n":2,"rev":96.12},"33626":{"n":1,"rev":20.62},"33556":{"n":1,"rev":38.36},"33610":{"n":1,"rev":60.13},"33541":{"n":1,"rev":106.09},"34690":{"n":1,"rev":59.13},"33618":{"n":1,"rev":28.33},"34688":{"n":1,"rev":15.75},"34667":{"n":1,"rev":95.82},"33615":{"n":1,"rev":64.96},"33635":{"n":1,"rev":56.46},"33612":{"n":1,"rev":76.45}};
+const ranked = Object.entries(DATA).sort((a,b)=>b[1].n-a[1].n);
+const top20 = ranked.slice(0,20).map(d=>d[0]);
+const top20set = new Set(top20);
+const rankOf = {}; ranked.forEach((d,i)=>rankOf[d[0]]=i+1);
+const maxTop = ranked[0][1].n;
+const GREENS = ["#c7e9c0","#a1d99b","#74c476","#41ab5d","#238b45","#005a32"];
+function greenFor(n){
+  const t = n/maxTop;
+  if(t>0.85) return GREENS[5];
+  if(t>0.65) return GREENS[4];
+  if(t>0.50) return GREENS[3];
+  if(t>0.38) return GREENS[2];
+  if(t>0.28) return GREENS[1];
+  return GREENS[0];
+}
+const usd = v => '$'+Math.round(v).toLocaleString('en-US');
+const usd2 = v => '$'+v.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+const map = L.map('map',{zoomControl:true}).setView([27.95,-82.55],10);
+L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',{
+  attribution:'&copy; OpenStreetMap &copy; CARTO', subdomains:'abcd', maxZoom:19
+}).addTo(map);
+const layersByZip = {};   // zip -> geojson layer
+let activeZip = null;
+function styleFor(zip){
+  const d = DATA[zip];
+  if(top20set.has(zip)) return {weight:1.3,color:"#00451f",fillColor:greenFor(d.n),fillOpacity:0.82};
+  if(d) return {weight:0.6,color:"#9ca3af",fillColor:"#9ca3af",fillOpacity:0.12};
+  return {weight:0,fillOpacity:0};
+}
+function selectZip(zip){
+  const lyr = layersByZip[zip];
+  if(!lyr) return;
+  // reset previous
+  if(activeZip && layersByZip[activeZip]) layersByZip[activeZip].setStyle(styleFor(activeZip));
+  activeZip = zip;
+  lyr.setStyle({weight:4,color:'#000',fillColor:greenFor(DATA[zip].n),fillOpacity:0.9});
+  lyr.bringToFront();
+  map.fitBounds(lyr.getBounds().pad(0.6));
+  const c=lyr.getBounds().getCenter();
+  L.popup({offset:[0,-2]}).setLatLng(c)
+    .setContent(`<b>Zip ${zip}</b><br>${DATA[zip].n} trips &middot; #${rankOf[zip]}<br>${usd(DATA[zip].rev)} &middot; ${usd2(DATA[zip].rev/DATA[zip].n)}/trip`)
+    .openOn(map);
+  document.querySelectorAll('tr.top').forEach(tr=>tr.classList.toggle('active', tr.dataset.zip===zip));
+}
+fetch("https://raw.githubusercontent.com/OpenDataDE/State-zip-code-GeoJSON/master/fl_florida_zip_codes_geo.min.json")
+ .then(r=>{ if(!r.ok) throw new Error(r.status); return r.json(); })
+ .then(gj=>{
+    const want = new Set(Object.keys(DATA));
+    const feats = gj.features.filter(f=>want.has(f.properties.ZCTA5CE10));
+    L.geoJSON(feats,{
+      style:f=>styleFor(f.properties.ZCTA5CE10),
+      onEachFeature:(f,lyr)=>{
+        const z=f.properties.ZCTA5CE10;
+        layersByZip[z]=lyr;
+        lyr.on('click',()=>selectZip(z));
+        if(top20set.has(z)){
+          lyr.on('mouseover',()=>{ if(z!==activeZip) lyr.setStyle({weight:3,color:'#000'}); });
+          lyr.on('mouseout',()=>{ if(z!==activeZip) lyr.setStyle(styleFor(z)); });
+        }
+      }
+    }).addTo(map);
+    feats.forEach(f=>{
+      const z=f.properties.ZCTA5CE10;
+      if(!top20set.has(z)) return;
+      const d=DATA[z];
+      const c=L.geoJSON(f).getBounds().getCenter();
+      const html=`<div class="ziplabel"><div class="z">${z}</div>`+
+                 `<div class="d">${d.n} trips &middot; #${rankOf[z]}</div>`+
+                 `<div class="d">${usd(d.rev)}</div></div>`;
+      L.marker(c,{interactive:false,icon:L.divIcon({className:'',html,iconSize:[78,42],iconAnchor:[39,21]})}).addTo(map);
+    });
+    const all = L.featureGroup(Object.values(layersByZip));
+    if(all.getBounds().isValid()) map.fitBounds(all.getBounds().pad(0.05));
+    document.getElementById('status').textContent =
+      `${feats.length} of ${Object.keys(DATA).length} served zips drawn. Top 20 in green (darker = more trips); click any zip (map or list) to focus it.`;
+ })
+ .catch(e=>{
+    document.getElementById('status').innerHTML =
+      `<b style="color:#b91c1c">Could not load map boundaries</b> (${e.message}). The ranked list below is still complete. Boundary data loads live from GitHub — check the connection and reload.`;
+ });
+const lg = L.control({position:'bottomleft'});
+lg.onAdd=function(){
+  const d=L.DomUtil.create('div','legend');
+  d.innerHTML='<b>Top-20 trip volume</b><br>'+
+    `<i style="background:${GREENS[5]}"></i> most trips<br>`+
+    `<i style="background:${GREENS[3]}"></i> medium<br>`+
+    `<i style="background:${GREENS[0]}"></i> fewer<br>`+
+    `<i style="background:#9ca3af;opacity:.3"></i> other served zip`;
+  return d;
+};
+lg.addTo(map);
+const tb=document.querySelector('#tbl tbody');
+ranked.slice(0,20).forEach((d,i)=>{
+  const z=d[0], v=d[1];
+  const tr=document.createElement('tr'); tr.className='top'; tr.dataset.zip=z;
+  tr.innerHTML=`<td>${i+1}</td><td><span class="swatch" style="background:${greenFor(v.n)}"></span><span class="ziplink">${z}</span></td>`+
+               `<td class="n">${v.n}</td><td class="n">${usd(v.rev)}</td><td class="n">${usd2(v.rev/v.n)}</td>`;
+  tr.addEventListener('click',()=>selectZip(z));
+  tb.appendChild(tr);
+});
+</script>
+</body>
+</html>
