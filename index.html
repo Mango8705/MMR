@@ -113,7 +113,7 @@ fetch("https://raw.githubusercontent.com/OpenDataDE/State-zip-code-GeoJSON/maste
    L.geoJSON(feats,{style:f=>styleFor(f.properties.ZCTA5CE10),onEachFeature:(f,ly)=>{
      const z=f.properties.ZCTA5CE10; layersByZip[z]=ly;
      ly.bindTooltip(tipHtml(z),{className:'z',sticky:true});
-     ly.on('click',()=>toggle(z));
+     ly.on('click',(e)=>{toggle(z);L.DomEvent.stop(e);});
      ly.on('mouseover',()=>{if(!sel.has(z))ly.setStyle({weight:2.5,color:'#000'});});
      ly.on('mouseout',()=>{if(!sel.has(z))ly.setStyle(styleFor(z));});
      const c=ly.getBounds().getCenter();
@@ -129,6 +129,7 @@ fetch("https://raw.githubusercontent.com/OpenDataDE/State-zip-code-GeoJSON/maste
 const lg=L.control({position:'bottomleft'});
 lg.onAdd=function(){const d=L.DomUtil.create('div','legend');d.innerHTML='<b>Trip volume</b><br>'+`<i style="background:${GREENS[6]}"></i> most<br><i style="background:${GREENS[3]}"></i> medium<br><i style="background:${GREENS[0]}"></i> fewest`;return d;};
 lg.addTo(map);
+map.on('click',()=>clearSel());
 function fixSize(){setTimeout(()=>map.invalidateSize(),200);}
 window.addEventListener('resize',fixSize);window.addEventListener('orientationchange',fixSize);setTimeout(fixSize,400);
 const tb=document.querySelector('#tbl tbody');
