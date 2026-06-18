@@ -54,7 +54,7 @@
       <p class="sub">MMR &middot; Broker trips (Alivi, ModivCare, Ride2MD, SafeRide) &middot; Mar 16 – Jun 15, 2026.</p>
       <div id="summary"></div>
       <div id="status">Loading zip-code boundaries…</div>
-      <p class="hint">Click zips on the map (or rows below) to select multiple — totals update live. Click again to deselect.</p>
+      <p class="hint">Click zips on the map (or rows below) to total them. Clicking a row also zooms to that zip.</p>
     </div>
     <div id="sidetbl">
       <table id="tbl"><thead><tr><th>#</th><th>Zip</th><th class="n">Trips</th><th class="n">Revenue</th><th class="n">Rev/Trip</th><th class="n">Rev/Day</th></tr></thead><tbody></tbody></table>
@@ -96,12 +96,12 @@ function summary(){
     list+
     (sel.size? `<button class="clr" onclick="clearSel()">Clear selection</button>`:'');
 }
+function zoomTo(z){const ly=layersByZip[z];if(ly&&ly.getBounds&&ly.getBounds().isValid()){map.fitBounds(ly.getBounds().pad(0.5));ly.bringToFront();}}
 function toggle(z){ if(sel.has(z))sel.delete(z); else sel.add(z);
   const ly=layersByZip[z]; if(ly){ly.setStyle(styleFor(z)); if(sel.has(z))ly.bringToFront();}
   document.querySelectorAll('tr.row').forEach(tr=>tr.classList.toggle('sel',sel.has(tr.dataset.zip)));
   summary();
 }
-function zoomTo(z){ const ly=layersByZip[z]; if(ly&&ly.getBounds&&ly.getBounds().isValid()){ map.fitBounds(ly.getBounds().pad(0.5)); ly.bringToFront(); } }
 function clearSel(){ const was=[...sel]; sel.clear(); was.forEach(z=>{if(layersByZip[z])layersByZip[z].setStyle(styleFor(z));});
   document.querySelectorAll('tr.row').forEach(tr=>tr.classList.remove('sel')); summary(); }
 fetch("https://raw.githubusercontent.com/OpenDataDE/State-zip-code-GeoJSON/master/fl_florida_zip_codes_geo.min.json")
@@ -134,4 +134,9 @@ window.addEventListener('resize',fixSize);window.addEventListener('orientationch
 const tb=document.querySelector('#tbl tbody');
 ranked.forEach((d,i)=>{const z=d[0],v=d[1];const tr=document.createElement('tr');tr.className='row';tr.dataset.zip=z;
   tr.innerHTML=`<td>${i+1}</td><td><span class="swatch" style="background:${greenFor(v.n)}"></span><span class="ziplink">${z}</span></td>`+
-   `<td class="n">${v.n}</td><td class="n">${usd(v.rev)}</td><td class="n">${usd2(v.rev/v.n)}<
+   `<td class="n">${v.n}</td><td class="n">${usd(v.rev)}</td><td class="n">${usd2(v.rev/v.n)}</td><td class="n">${usd2(v.rev/v.d.length)}</td>`;
+  tr.addEventListener('click',()=>{toggle(z); zoomTo(z);}); tb.appendChild(tr);});
+summary();
+</script>
+</body>
+</html>
