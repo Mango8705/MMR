@@ -9,7 +9,7 @@
   html,body{margin:0;height:100%;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#1f2937;}
   #wrap{display:flex;height:100vh;}
   #map{flex:1;height:100%;}
-  #side{width:420px;display:flex;flex-direction:column;border-left:1px solid #e5e7eb;background:#fafafa;}
+  #side{width:430px;display:flex;flex-direction:column;border-left:1px solid #e5e7eb;background:#fafafa;}
   #sidehead{padding:14px 16px 6px;}
   #sidetbl{overflow-y:auto;padding:0 16px 16px;}
   h1{font-size:16px;margin:0 0 4px;}
@@ -20,16 +20,29 @@
   td.n{text-align:right;font-variant-numeric:tabular-nums;}
   tr.row{cursor:pointer;}
   tr.row:hover{background:#eaf6ed;}
-  tr.row.active{background:#d4eedd;outline:2px solid #238b45;}
+  tr.row.sel{background:#fff3cd;outline:2px solid #e0a800;}
   .ziplink{color:#0b6b33;}
   #status{font-size:12px;color:#6b7280;padding:4px 0;}
   .hint{font-size:11.5px;color:#9ca3af;margin:2px 0 8px;}
+  #summary{background:#0b3d20;color:#fff;border-radius:8px;padding:10px 12px;margin:6px 0 10px;}
+  #summary .lab{font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:#bfe3cc;}
+  #summary .big{font-size:15px;font-weight:700;margin:2px 0 6px;}
+  #summary .grid{display:flex;gap:14px;flex-wrap:wrap;font-size:13px;}
+  #summary .grid div{line-height:1.3;}
+  #summary .grid b{font-size:14px;}
+  #summary .clr{margin-top:8px;display:inline-block;font-size:11.5px;color:#0b3d20;background:#bfe3cc;border:none;padding:4px 10px;border-radius:5px;cursor:pointer;}
   .legend{line-height:18px;font-size:12px;background:#fff;padding:8px 10px;border-radius:6px;box-shadow:0 1px 4px rgba(0,0,0,.2);}
   .legend i{width:14px;height:14px;float:left;margin-right:6px;opacity:.9;}
   .swatch{display:inline-block;width:11px;height:11px;border-radius:2px;margin-right:6px;vertical-align:middle;border:1px solid rgba(0,0,0,.15);}
   .leaflet-tooltip.z{font-size:12px;line-height:1.4;}
-  .zipcode{font-size:10.5px;font-weight:700;color:#173d28;text-align:center;white-space:nowrap;
-           text-shadow:0 0 2px #fff,0 0 2px #fff,0 0 3px #fff,0 0 3px #fff;pointer-events:none;}
+  .zipcode{font-size:10.5px;font-weight:700;color:#173d28;text-align:center;white-space:nowrap;text-shadow:0 0 2px #fff,0 0 2px #fff,0 0 3px #fff;pointer-events:none;}
+  @media (max-width:760px){
+    #wrap{flex-direction:column;height:auto;}
+    #map{flex:none;width:100%;height:60vh;min-height:320px;}
+    #side{width:100%;border-left:none;border-top:1px solid #e5e7eb;}
+    #sidetbl{overflow-y:visible;}
+    #summary{position:sticky;top:0;z-index:500;}
+  }
 </style>
 </head>
 <body>
@@ -38,9 +51,10 @@
   <div id="side">
     <div id="sidehead">
       <h1>Broker Pickups by Zip Code</h1>
-      <p class="sub">MMR &middot; Broker trips only (Alivi, ModivCare, Ride2MD, SafeRide) &middot; Mar 16 – Jun 15, 2026 &middot; 3,706 trips across 65 zips. Shaded by trip volume (darker = more).</p>
+      <p class="sub">MMR &middot; Broker trips (Alivi, ModivCare, Ride2MD, SafeRide) &middot; Mar 16 – Jun 15, 2026.</p>
+      <div id="summary"></div>
       <div id="status">Loading zip-code boundaries…</div>
-      <p class="hint">Zip codes are labeled on the map. Hover a zip, or click any row below, for full details. Rev/Day = revenue per day the zip had at least one trip.</p>
+      <p class="hint">Click zips on the map (or rows below) to select multiple — totals update live. Click again to deselect.</p>
     </div>
     <div id="sidetbl">
       <table id="tbl"><thead><tr><th>#</th><th>Zip</th><th class="n">Trips</th><th class="n">Revenue</th><th class="n">Rev/Trip</th><th class="n">Rev/Day</th></tr></thead><tbody></tbody></table>
@@ -49,102 +63,79 @@
 </div>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-const DATA = {"33705":{"n":309,"rev":9999.71,"days":76,"revday":131.58},"34689":{"n":242,"rev":8795.47,"days":68,"revday":129.35},"33756":{"n":228,"rev":7644.01,"days":75,"revday":101.92},"34698":{"n":213,"rev":8692.42,"days":76,"revday":114.37},"33711":{"n":193,"rev":7011.61,"days":74,"revday":94.75},"33782":{"n":179,"rev":5461.56,"days":77,"revday":70.93},"33763":{"n":146,"rev":2377.35,"days":64,"revday":37.15},"33714":{"n":142,"rev":4720.37,"days":70,"revday":67.43},"33761":{"n":138,"rev":3393.12,"days":69,"revday":49.18},"33701":{"n":122,"rev":4375.73,"days":69,"revday":63.42},"33774":{"n":111,"rev":2587.52,"days":62,"revday":41.73},"34684":{"n":109,"rev":3664.6,"days":49,"revday":74.79},"33771":{"n":102,"rev":3347.37,"days":59,"revday":56.74},"33781":{"n":97,"rev":3370.21,"days":49,"revday":68.78},"33755":{"n":96,"rev":3171.89,"days":67,"revday":47.34},"33712":{"n":95,"rev":3021.44,"days":57,"revday":53.01},"33759":{"n":85,"rev":3114.17,"days":69,"revday":45.13},"33709":{"n":83,"rev":2428.88,"days":47,"revday":51.68},"33707":{"n":82,"rev":2782.07,"days":52,"revday":53.5},"33773":{"n":79,"rev":3091.62,"days":62,"revday":49.86},"33702":{"n":79,"rev":3927.36,"days":48,"revday":81.82},"33710":{"n":79,"rev":2718.37,"days":42,"revday":64.72},"33770":{"n":79,"rev":2497.11,"days":48,"revday":52.02},"33765":{"n":65,"rev":2429.17,"days":43,"revday":56.49},"33777":{"n":63,"rev":2410.07,"days":39,"revday":61.8},"33713":{"n":59,"rev":1858.54,"days":38,"revday":48.91},"33778":{"n":57,"rev":1527.97,"days":39,"revday":39.18},"33760":{"n":43,"rev":1248.82,"days":35,"revday":35.68},"33772":{"n":42,"rev":1416.37,"days":36,"revday":39.34},"34683":{"n":41,"rev":995.13,"days":34,"revday":29.27},"33764":{"n":38,"rev":1227.12,"days":29,"revday":42.31},"34695":{"n":34,"rev":1157.59,"days":27,"revday":42.87},"34653":{"n":21,"rev":1165.79,"days":15,"revday":77.72},"33716":{"n":20,"rev":710.46,"days":18,"revday":39.47},"33704":{"n":18,"rev":546.45,"days":15,"revday":36.43},"34685":{"n":17,"rev":575.13,"days":14,"revday":41.08},"34655":{"n":13,"rev":727.07,"days":11,"revday":66.1},"95709":{"n":8,"rev":454.88,"days":8,"revday":56.86},"34652":{"n":8,"rev":273.25,"days":8,"revday":34.16},"33762":{"n":8,"rev":277.68,"days":8,"revday":34.71},"33776":{"n":8,"rev":247.02,"days":8,"revday":30.88},"33744":{"n":7,"rev":306.28,"days":7,"revday":43.75},"33703":{"n":6,"rev":110.4,"days":6,"revday":18.4},"34677":{"n":6,"rev":180.86,"days":6,"revday":30.14},"34668":{"n":3,"rev":157.92,"days":3,"revday":52.64},"33609":{"n":3,"rev":226.03,"days":3,"revday":75.34},"34691":{"n":3,"rev":100.2,"days":3,"revday":33.4},"33625":{"n":3,"rev":190.0,"days":3,"revday":63.33},"33602":{"n":3,"rev":183.64,"days":3,"revday":61.21},"33715":{"n":2,"rev":99.28,"days":2,"revday":49.64},"33606":{"n":2,"rev":104.73,"days":2,"revday":52.37},"34654":{"n":2,"rev":84.18,"days":2,"revday":42.09},"33708":{"n":2,"rev":49.2,"days":2,"revday":24.6},"33607":{"n":2,"rev":96.12,"days":2,"revday":48.06},"33626":{"n":1,"rev":20.62,"days":1,"revday":20.62},"33556":{"n":1,"rev":38.36,"days":1,"revday":38.36},"33610":{"n":1,"rev":60.13,"days":1,"revday":60.13},"33541":{"n":1,"rev":106.09,"days":1,"revday":106.09},"34690":{"n":1,"rev":59.13,"days":1,"revday":59.13},"33618":{"n":1,"rev":28.33,"days":1,"revday":28.33},"34688":{"n":1,"rev":15.75,"days":1,"revday":15.75},"34667":{"n":1,"rev":95.82,"days":1,"revday":95.82},"33615":{"n":1,"rev":64.96,"days":1,"revday":64.96},"33635":{"n":1,"rev":56.46,"days":1,"revday":56.46},"33612":{"n":1,"rev":76.45,"days":1,"revday":76.45}};
+const RAW = {"base":"2026-03-16","zips":{"33705":{"n":309,"rev":9999.71,"d":[0,1,2,4,7,8,9,10,11,12,14,15,16,17,18,19,21,22,23,24,25,26,28,29,30,31,32,33,35,36,37,38,39,40,42,43,44,45,46,47,49,50,51,52,53,54,56,57,58,59,60,61,63,64,65,66,67,68,70,71,72,73,74,75,77,78,79,80,81,82,84,85,86,87,88,91]},"33781":{"n":97,"rev":3370.21,"d":[3,8,9,11,12,14,15,16,17,18,19,21,23,24,26,29,30,32,33,37,39,40,42,43,44,45,46,49,51,53,56,57,58,60,63,64,65,66,67,70,72,74,77,79,81,84,86,88,91]},"33709":{"n":83,"rev":2428.88,"d":[0,2,3,8,9,10,14,15,16,18,21,23,25,28,29,30,32,35,38,39,42,43,46,49,50,52,53,57,58,59,63,65,67,71,72,73,75,77,79,80,81,84,85,86,87,88,91]},"33756":{"n":228,"rev":7644.01,"d":[0,1,2,3,4,5,7,8,9,10,11,12,14,15,16,17,18,21,22,23,24,25,28,29,30,31,32,33,35,36,37,38,39,40,42,43,44,45,46,47,49,50,51,52,53,54,56,57,58,59,60,61,63,64,65,66,67,68,70,71,72,73,74,75,77,79,80,81,84,85,86,87,88,89,91]},"33755":{"n":96,"rev":3171.89,"d":[1,2,3,9,10,15,16,17,21,22,23,24,25,26,28,29,30,31,32,33,35,36,37,38,39,40,42,43,44,45,46,47,49,50,51,52,53,54,56,57,58,59,60,61,63,64,65,66,67,68,70,71,72,73,74,75,77,78,79,80,82,84,85,86,87,89,91]},"95709":{"n":8,"rev":454.88,"d":[0,1,3,4,5,7,8,9]},"34689":{"n":242,"rev":8795.47,"d":[0,1,2,3,4,5,7,8,9,11,14,15,16,17,18,21,22,23,25,28,29,30,32,33,35,36,37,38,39,40,42,43,44,45,46,49,50,51,53,56,57,58,60,63,64,65,66,67,68,70,71,72,73,74,75,77,78,79,80,81,82,84,85,86,87,88,89,91]},"33711":{"n":193,"rev":7011.61,"d":[0,2,3,7,8,9,10,11,12,14,15,16,17,18,19,21,22,23,24,25,28,29,30,31,32,33,35,36,37,38,39,40,42,43,44,45,46,47,49,50,51,52,53,54,56,57,58,59,60,61,63,64,65,66,67,68,70,71,72,73,74,75,77,78,80,81,82,84,85,86,87,88,89,91]},"33761":{"n":138,"rev":3393.12,"d":[0,1,2,3,4,5,7,8,9,10,11,12,14,15,16,17,18,19,21,22,23,24,25,28,29,30,31,32,33,35,36,37,38,39,40,42,43,44,45,46,49,50,51,52,53,56,57,58,59,60,63,64,65,66,67,71,72,73,74,77,78,79,80,81,84,85,86,87,88]},"33763":{"n":146,"rev":2377.35,"d":[0,1,2,3,4,7,8,9,10,11,14,15,16,17,18,21,22,23,24,25,28,29,30,31,32,35,36,37,38,39,42,43,44,45,46,49,50,51,52,53,56,57,58,59,60,63,64,65,66,67,71,72,73,74,77,78,79,80,81,84,85,86,87,88]},"33714":{"n":142,"rev":4720.37,"d":[0,1,2,3,4,5,7,8,9,10,12,14,15,16,17,18,19,21,22,23,24,25,26,28,29,30,31,33,35,36,37,38,39,40,42,43,44,45,47,49,50,51,52,54,56,57,58,59,60,61,63,64,65,66,67,68,71,72,73,75,77,78,79,80,82,84,85,87,89,91]},"33771":{"n":102,"rev":3347.37,"d":[0,1,2,3,4,7,9,11,12,14,15,16,17,18,21,23,24,25,28,29,30,31,32,35,36,37,38,39,40,42,43,44,45,46,49,50,51,52,53,57,58,59,63,64,65,66,68,71,72,73,74,75,77,79,80,84,85,86,88]},"34684":{"n":109,"rev":3664.6,"d":[1,3,5,8,10,11,14,15,16,17,18,21,23,25,30,31,32,36,37,38,42,43,44,45,49,51,52,53,56,57,58,59,60,63,64,65,67,68,70,71,72,74,77,79,81,84,87,88,91]},"34698":{"n":213,"rev":8692.42,"d":[0,1,2,3,4,5,7,8,9,10,11,12,14,15,17,18,19,22,23,24,26,28,29,30,31,32,33,35,36,37,38,39,40,42,43,44,45,46,47,49,50,51,52,53,54,56,57,58,59,60,61,63,64,65,66,67,68,70,71,72,73,74,75,77,78,79,80,81,82,84,85,86,87,88,89,91]},"33782":{"n":179,"rev":5461.56,"d":[0,1,2,3,4,5,7,8,9,10,11,14,15,16,17,18,21,22,23,24,25,26,28,29,30,31,32,33,35,36,37,38,39,40,42,43,44,45,46,47,49,50,51,52,53,54,56,57,58,59,60,61,63,64,65,66,67,68,70,71,72,73,74,75,77,78,79,80,81,82,84,85,86,87,88,89,91]},"33712":{"n":95,"rev":3021.44,"d":[0,1,2,3,4,7,9,10,12,14,16,18,19,21,22,23,24,25,28,29,30,32,35,36,37,38,39,42,43,44,45,46,49,50,53,54,56,58,59,63,65,66,67,68,70,72,74,77,79,80,81,84,85,86,87,88,91]},"33701":{"n":122,"rev":4375.73,"d":[0,1,2,3,5,7,8,9,10,11,12,14,15,16,17,18,19,21,22,23,24,25,26,28,29,30,33,36,37,38,39,40,42,43,44,45,46,49,50,51,52,53,54,56,57,59,60,61,63,64,65,66,67,68,72,74,75,77,78,79,80,82,84,85,86,87,88,89,91]},"33704":{"n":18,"rev":546.45,"d":[0,1,2,3,4,5,7,8,9,10,12,14,15,16,51]},"33773":{"n":79,"rev":3091.62,"d":[0,1,2,3,4,5,7,8,9,10,12,14,15,16,17,18,19,21,22,23,24,25,26,28,29,30,31,32,33,35,36,37,38,39,40,42,43,44,45,46,47,49,50,52,53,54,57,61,64,65,66,68,70,71,72,73,74,75,78,80,81,86]},"33774":{"n":111,"rev":2587.52,"d":[0,2,3,4,7,8,9,10,11,14,15,16,17,18,21,22,23,24,25,28,29,30,31,32,36,37,38,39,42,43,44,45,46,49,50,51,52,53,56,57,58,59,60,63,64,65,67,71,72,73,74,77,78,79,80,81,84,85,86,87,88,89]},"34695":{"n":34,"rev":1157.59,"d":[0,2,3,7,10,12,14,15,17,19,21,24,28,31,36,43,44,49,50,52,57,59,64,67,68,71,81]},"33777":{"n":63,"rev":2410.07,"d":[0,3,9,14,15,21,28,35,36,38,40,42,43,44,45,47,49,50,52,53,54,57,58,59,61,63,64,65,66,67,68,71,72,73,79,84,85,86,88]},"33713":{"n":59,"rev":1858.54,"d":[0,2,3,9,14,15,17,18,19,26,28,29,30,31,32,35,36,37,38,40,42,44,46,49,50,52,54,58,59,65,68,71,73,77,78,84,85,86]},"33702":{"n":79,"rev":3927.36,"d":[0,1,2,3,7,9,10,14,15,16,22,23,25,28,31,32,36,38,39,42,43,44,45,52,53,54,56,57,58,59,61,64,65,66,67,68,71,72,73,74,75,78,81,84,85,87,88,89]},"33759":{"n":85,"rev":3114.17,"d":[1,3,4,5,7,8,10,12,15,17,18,19,21,22,23,24,25,26,28,29,30,31,32,33,36,37,39,40,42,43,44,45,46,47,49,50,51,52,53,54,56,57,58,60,61,63,64,65,66,67,68,70,71,72,73,74,75,77,78,79,80,81,82,84,85,87,88,89,91]},"33707":{"n":82,"rev":2782.07,"d":[0,1,5,10,11,12,14,23,25,29,36,37,38,39,40,42,43,45,46,47,49,50,51,52,53,54,56,57,58,59,60,61,63,64,65,66,67,68,70,71,72,73,75,78,79,80,81,82,84,85,87,89]},"33710":{"n":79,"rev":2718.37,"d":[0,3,7,8,9,11,14,15,17,18,22,24,26,29,30,31,35,37,38,39,45,46,49,50,52,59,60,63,64,65,66,67,73,74,75,78,79,80,81,84,86,91]},"33770":{"n":79,"rev":2497.11,"d":[2,3,4,7,9,10,11,12,14,15,16,18,21,23,24,25,28,29,30,32,35,36,37,38,39,43,49,50,51,56,57,58,60,65,67,71,72,74,75,77,79,81,84,85,86,88,89,91]},"34668":{"n":3,"rev":157.92,"d":[0,2,49]},"34655":{"n":13,"rev":727.07,"d":[0,2,4,17,35,49,52,63,72,73,86]},"34652":{"n":8,"rev":273.25,"d":[2,4,22,33,72,78,82,89]},"33765":{"n":65,"rev":2429.17,"d":[2,14,15,16,18,22,23,24,28,30,35,36,37,43,45,46,47,50,51,52,54,57,58,59,61,63,64,66,71,72,73,75,77,78,79,80,81,82,85,86,87,88,89]},"34653":{"n":21,"rev":1165.79,"d":[2,3,4,9,10,14,16,30,44,54,57,72,78,84,88]},"33760":{"n":43,"rev":1248.82,"d":[2,3,4,9,10,15,16,18,25,29,30,35,36,38,39,42,44,46,49,51,53,56,58,60,63,64,65,72,73,74,77,79,80,81,85]},"34685":{"n":17,"rev":575.13,"d":[2,3,10,45,49,58,64,65,67,72,73,84,85,87]},"33609":{"n":3,"rev":226.03,"d":[2,29,65]},"33778":{"n":57,"rev":1527.97,"d":[2,10,11,15,16,17,35,36,37,39,42,43,45,49,50,51,52,56,57,58,59,60,63,64,65,67,68,71,72,73,74,78,79,80,85,86,87,88,91]},"33772":{"n":42,"rev":1416.37,"d":[4,7,9,15,17,21,24,30,35,36,37,38,40,43,45,47,49,50,52,57,59,61,64,66,68,71,73,75,78,80,82,85,86,87,88,89]},"33715":{"n":2,"rev":99.28,"d":[4,43]},"33703":{"n":6,"rev":110.4,"d":[3,18,22,24,52,88]},"33626":{"n":1,"rev":20.62,"d":[7]},"34683":{"n":41,"rev":995.13,"d":[5,8,10,11,12,15,23,30,31,35,36,37,39,42,43,44,45,46,49,50,52,53,57,59,60,64,66,71,73,77,78,80,87,88]},"33764":{"n":38,"rev":1227.12,"d":[7,8,14,16,18,22,24,35,36,37,43,45,47,49,50,51,52,64,66,68,71,74,77,79,80,84,85,87,88]},"33762":{"n":8,"rev":277.68,"d":[7,9,15,31,32,36,79,91]},"33716":{"n":20,"rev":710.46,"d":[10,15,18,21,36,38,46,49,50,52,53,56,59,64,73,77,84,88]},"33744":{"n":7,"rev":306.28,"d":[9,23,36,66,74,78,88]},"34677":{"n":6,"rev":180.86,"d":[16,22,31,50,72,85]},"33556":{"n":1,"rev":38.36,"d":[16]},"34691":{"n":3,"rev":100.2,"d":[18,73,74]},"33610":{"n":1,"rev":60.13,"d":[18]},"33606":{"n":2,"rev":104.73,"d":[21,36]},"33541":{"n":1,"rev":106.09,"d":[22]},"33776":{"n":8,"rev":247.02,"d":[25,32,39,50,56,71,78,87]},"34690":{"n":1,"rev":59.13,"d":[31]},"34654":{"n":2,"rev":84.18,"d":[31,51]},"33618":{"n":1,"rev":28.33,"d":[37]},"33625":{"n":3,"rev":190.0,"d":[36,51,78]},"33708":{"n":2,"rev":49.2,"d":[60,64]},"34688":{"n":1,"rev":15.75,"d":[45]},"33607":{"n":2,"rev":96.12,"d":[51,79]},"34667":{"n":1,"rev":95.82,"d":[52]},"33602":{"n":3,"rev":183.64,"d":[57,85,86]},"33615":{"n":1,"rev":64.96,"d":[64]},"33635":{"n":1,"rev":56.46,"d":[84]},"33612":{"n":1,"rev":76.45,"d":[88]}}};
+const DATA = RAW.zips;
 const ranked = Object.entries(DATA).sort((a,b)=>b[1].n-a[1].n);
 const rankOf = {}; ranked.forEach((d,i)=>rankOf[d[0]]=i+1);
 const maxN = ranked[0][1].n;
-const GREENS = ["#e5f5e0","#c7e9c0","#a1d99b","#74c476","#41ab5d","#238b45","#005a32"];
-function greenFor(n){
-  const t = n/maxN;
-  if(t>0.85) return GREENS[6];
-  if(t>0.60) return GREENS[5];
-  if(t>0.40) return GREENS[4];
-  if(t>0.25) return GREENS[3];
-  if(t>0.12) return GREENS[2];
-  if(t>0.05) return GREENS[1];
-  return GREENS[0];
+const GREENS=["#e5f5e0","#c7e9c0","#a1d99b","#74c476","#41ab5d","#238b45","#005a32"];
+function greenFor(n){const t=n/maxN;if(t>0.85)return GREENS[6];if(t>0.60)return GREENS[5];if(t>0.40)return GREENS[4];if(t>0.25)return GREENS[3];if(t>0.12)return GREENS[2];if(t>0.05)return GREENS[1];return GREENS[0];}
+const usd=v=>'$'+Math.round(v).toLocaleString('en-US');
+const usd2=v=>'$'+v.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+const sel=new Set();
+const layersByZip={};
+const map=L.map('map',{zoomControl:true}).setView([27.95,-82.55],10);
+L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',{attribution:'&copy; OpenStreetMap &copy; CARTO',subdomains:'abcd',maxZoom:19}).addTo(map);
+function styleFor(z){const d=DATA[z];if(!d)return{weight:0,fillOpacity:0};
+  if(sel.has(z))return{weight:3.5,color:'#7a5200',fillColor:greenFor(d.n),fillOpacity:0.95,dashArray:null};
+  return{weight:0.8,color:'#3f6b52',fillColor:greenFor(d.n),fillOpacity:0.78};}
+function tipHtml(z){const d=DATA[z];const days=d.d.length;return `<b>Zip ${z}</b><br>Trips: ${d.n} &middot; Rank #${rankOf[z]} of ${ranked.length}<br>Revenue: ${usd(d.rev)}<br>Rev/trip: ${usd2(d.rev/d.n)}<br>Rev/day: ${usd2(d.rev/days)} <span style="color:#888">(${days} days)</span>`;}
+function summary(){
+  const box=document.getElementById('summary');
+  const zips=sel.size?[...sel]:Object.keys(DATA);
+  let n=0,rev=0;const dayset=new Set();
+  zips.forEach(z=>{n+=DATA[z].n;rev+=DATA[z].rev;DATA[z].d.forEach(x=>dayset.add(x));});
+  const days=dayset.size||1;
+  const label=sel.size? `${sel.size} zip${sel.size>1?'s':''} selected` : `All ${zips.length} zips`;
+  const list=sel.size? '<div class="lab" style="margin-top:4px">'+[...sel].sort().join(', ')+'</div>' : '';
+  box.innerHTML=`<div class="lab">${label}</div>`+
+    `<div class="big">${n.toLocaleString()} trips &middot; ${usd(rev)}</div>`+
+    `<div class="grid"><div><span class="lab">Rev/Trip</span><br><b>${usd2(rev/n)}</b></div>`+
+    `<div><span class="lab">Rev/Day</span><br><b>${usd2(rev/days)}</b></div>`+
+    `<div><span class="lab">Active days</span><br><b>${days}</b></div></div>`+
+    list+
+    (sel.size? `<button class="clr" onclick="clearSel()">Clear selection</button>`:'');
 }
-const usd = v => '$'+Math.round(v).toLocaleString('en-US');
-const usd2 = v => '$'+v.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
-const map = L.map('map',{zoomControl:true}).setView([27.95,-82.55],10);
-L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',{
-  attribution:'&copy; OpenStreetMap &copy; CARTO', subdomains:'abcd', maxZoom:19
-}).addTo(map);
-const layersByZip = {};
-const labelLayer = L.layerGroup().addTo(map);
-let activeZip = null;
-function styleFor(zip){
-  const d = DATA[zip];
-  if(!d) return {weight:0,fillOpacity:0};
-  return {weight:0.8,color:"#3f6b52",fillColor:greenFor(d.n),fillOpacity:0.78};
+function toggle(z){ if(sel.has(z))sel.delete(z); else sel.add(z);
+  const ly=layersByZip[z]; if(ly){ly.setStyle(styleFor(z)); if(sel.has(z))ly.bringToFront();}
+  document.querySelectorAll('tr.row').forEach(tr=>tr.classList.toggle('sel',sel.has(tr.dataset.zip)));
+  summary();
 }
-function tipHtml(z){
-  const d=DATA[z];
-  return `<b>Zip ${z}</b><br>Trips: ${d.n} &middot; Rank #${rankOf[z]} of ${ranked.length}<br>Revenue: ${usd(d.rev)}<br>Rev/trip: ${usd2(d.rev/d.n)}<br>Rev/day: ${usd2(d.revday)} <span style="color:#888">(${d.days} active days)</span>`;
-}
-function selectZip(zip){
-  const lyr = layersByZip[zip];
-  document.querySelectorAll('tr.row').forEach(tr=>tr.classList.toggle('active', tr.dataset.zip===zip));
-  if(!lyr) return;
-  if(activeZip && layersByZip[activeZip]) layersByZip[activeZip].setStyle(styleFor(activeZip));
-  activeZip = zip;
-  lyr.setStyle({weight:4,color:'#000',fillColor:greenFor(DATA[zip].n),fillOpacity:0.92});
-  lyr.bringToFront();
-  map.fitBounds(lyr.getBounds().pad(0.5));
-  L.popup({offset:[0,-2]}).setLatLng(lyr.getBounds().getCenter()).setContent(tipHtml(zip)).openOn(map);
-}
+function clearSel(){ const was=[...sel]; sel.clear(); was.forEach(z=>{if(layersByZip[z])layersByZip[z].setStyle(styleFor(z));});
+  document.querySelectorAll('tr.row').forEach(tr=>tr.classList.remove('sel')); summary(); }
 fetch("https://raw.githubusercontent.com/OpenDataDE/State-zip-code-GeoJSON/master/fl_florida_zip_codes_geo.min.json")
- .then(r=>{ if(!r.ok) throw new Error(r.status); return r.json(); })
+ .then(r=>{if(!r.ok)throw new Error(r.status);return r.json();})
  .then(gj=>{
-    const want = new Set(Object.keys(DATA));
-    const feats = gj.features.filter(f=>want.has(f.properties.ZCTA5CE10));
-    L.geoJSON(feats,{
-      style:f=>styleFor(f.properties.ZCTA5CE10),
-      onEachFeature:(f,lyr)=>{
-        const z=f.properties.ZCTA5CE10;
-        layersByZip[z]=lyr;
-        lyr.bindTooltip(tipHtml(z),{className:'z',sticky:true});
-        lyr.on('click',()=>selectZip(z));
-        lyr.on('mouseover',()=>{ if(z!==activeZip) lyr.setStyle({weight:2.5,color:'#000'}); });
-        lyr.on('mouseout',()=>{ if(z!==activeZip) lyr.setStyle(styleFor(z)); });
-        // permanent zip-code label (code only, no metrics)
-        const c=lyr.getBounds().getCenter();
-        L.marker(c,{interactive:false,keyboard:false,
-          icon:L.divIcon({className:'',html:`<div class="zipcode">${z}</div>`,iconSize:[46,14],iconAnchor:[23,7]})
-        }).addTo(labelLayer);
-      }
-    }).addTo(map);
-    const all = L.featureGroup(Object.values(layersByZip));
-    if(all.getBounds().isValid()) map.fitBounds(all.getBounds().pad(0.05));
-    // hide labels when zoomed far out to avoid crowding
-    function toggleLabels(){ const show=map.getZoom()>=10; labelLayer.eachLayer(l=>{const e=l.getElement&&l.getElement(); if(e)e.style.display=show?'':'none';}); }
-    map.on('zoomend',toggleLabels); toggleLabels();
-    document.getElementById('status').textContent =
-      `${feats.length} of ${Object.keys(DATA).length} served zips drawn. Zip codes labeled; hover a zip or click a row for full details.`;
+   const want=new Set(Object.keys(DATA));
+   const feats=gj.features.filter(f=>want.has(f.properties.ZCTA5CE10));
+   const labels=L.layerGroup().addTo(map);
+   L.geoJSON(feats,{style:f=>styleFor(f.properties.ZCTA5CE10),onEachFeature:(f,ly)=>{
+     const z=f.properties.ZCTA5CE10; layersByZip[z]=ly;
+     ly.bindTooltip(tipHtml(z),{className:'z',sticky:true});
+     ly.on('click',()=>toggle(z));
+     ly.on('mouseover',()=>{if(!sel.has(z))ly.setStyle({weight:2.5,color:'#000'});});
+     ly.on('mouseout',()=>{if(!sel.has(z))ly.setStyle(styleFor(z));});
+     const c=ly.getBounds().getCenter();
+     L.marker(c,{interactive:false,keyboard:false,icon:L.divIcon({className:'',html:`<div class="zipcode">${z}</div>`,iconSize:[46,14],iconAnchor:[23,7]})}).addTo(labels);
+   }}).addTo(map);
+   const all=L.featureGroup(Object.values(layersByZip));
+   if(all.getBounds().isValid())map.fitBounds(all.getBounds().pad(0.05));
+   function tog(){const s=map.getZoom()>=10;labels.eachLayer(l=>{const e=l.getElement&&l.getElement();if(e)e.style.display=s?'':'none';});}
+   map.on('zoomend',tog);tog();
+   document.getElementById('status').textContent=`${feats.length} of ${Object.keys(DATA).length} served zips drawn.`;
  })
- .catch(e=>{
-    document.getElementById('status').innerHTML =
-      `<b style="color:#b91c1c">Could not load map boundaries</b> (${e.message}). The full list below still works. Boundary data loads live from GitHub — check the connection and reload.`;
- });
-const lg = L.control({position:'bottomleft'});
-lg.onAdd=function(){
-  const d=L.DomUtil.create('div','legend');
-  d.innerHTML='<b>Trip volume</b><br>'+
-    `<i style="background:${GREENS[6]}"></i> most trips<br>`+
-    `<i style="background:${GREENS[3]}"></i> medium<br>`+
-    `<i style="background:${GREENS[0]}"></i> fewest`;
-  return d;
-};
+ .catch(e=>{document.getElementById('status').innerHTML=`<b style="color:#b91c1c">Could not load map boundaries</b> (${e.message}). The list still works.`;});
+const lg=L.control({position:'bottomleft'});
+lg.onAdd=function(){const d=L.DomUtil.create('div','legend');d.innerHTML='<b>Trip volume</b><br>'+`<i style="background:${GREENS[6]}"></i> most<br><i style="background:${GREENS[3]}"></i> medium<br><i style="background:${GREENS[0]}"></i> fewest`;return d;};
 lg.addTo(map);
+function fixSize(){setTimeout(()=>map.invalidateSize(),200);}
+window.addEventListener('resize',fixSize);window.addEventListener('orientationchange',fixSize);setTimeout(fixSize,400);
 const tb=document.querySelector('#tbl tbody');
-ranked.forEach((d,i)=>{
-  const z=d[0], v=d[1];
-  const tr=document.createElement('tr'); tr.className='row'; tr.dataset.zip=z;
+ranked.forEach((d,i)=>{const z=d[0],v=d[1];const tr=document.createElement('tr');tr.className='row';tr.dataset.zip=z;
   tr.innerHTML=`<td>${i+1}</td><td><span class="swatch" style="background:${greenFor(v.n)}"></span><span class="ziplink">${z}</span></td>`+
-               `<td class="n">${v.n}</td><td class="n">${usd(v.rev)}</td><td class="n">${usd2(v.rev/v.n)}</td><td class="n">${usd2(v.revday)}</td>`;
-  tr.addEventListener('click',()=>selectZip(z));
-  tb.appendChild(tr);
-});
+   `<td class="n">${v.n}</td><td class="n">${usd(v.rev)}</td><td class="n">${usd2(v.rev/v.n)}</td><td class="n">${usd2(v.rev/v.d.length)}</td>`;
+  tr.addEventListener('click',()=>toggle(z)); tb.appendChild(tr);});
+summary();
 </script>
 </body>
 </html>
