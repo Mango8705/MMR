@@ -96,7 +96,7 @@ function summary(){
     list+
     (sel.size? `<button class="clr" onclick="clearSel()">Clear selection</button>`:'');
 }
-function zoomTo(z){const ly=layersByZip[z];if(ly&&ly.getBounds&&ly.getBounds().isValid()){map.fitBounds(ly.getBounds().pad(0.5));ly.bringToFront();}}
+function zoomTo(z){const ly=layersByZip[z];if(ly&&ly.getBounds&&ly.getBounds().isValid()){map.fitBounds(ly.getBounds().pad(0.5),{animate:false});ly.bringToFront();}}
 function toggle(z){ if(sel.has(z))sel.delete(z); else sel.add(z);
   const ly=layersByZip[z]; if(ly){ly.setStyle(styleFor(z)); if(sel.has(z))ly.bringToFront();}
   document.querySelectorAll('tr.row').forEach(tr=>tr.classList.toggle('sel',sel.has(tr.dataset.zip)));
@@ -120,7 +120,7 @@ fetch("https://raw.githubusercontent.com/OpenDataDE/State-zip-code-GeoJSON/maste
      L.marker(c,{interactive:false,keyboard:false,icon:L.divIcon({className:'',html:`<div class="zipcode">${z}</div>`,iconSize:[46,14],iconAnchor:[23,7]})}).addTo(labels);
    }}).addTo(map);
    const all=L.featureGroup(Object.values(layersByZip));
-   if(all.getBounds().isValid())map.fitBounds(all.getBounds().pad(0.05));
+   if(all.getBounds().isValid())map.fitBounds(all.getBounds().pad(0.05),{animate:false});
    function tog(){const s=map.getZoom()>=10;labels.eachLayer(l=>{const e=l.getElement&&l.getElement();if(e)e.style.display=s?'':'none';});}
    map.on('zoomend',tog);tog();
    document.getElementById('status').textContent=`${feats.length} of ${Object.keys(DATA).length} served zips drawn.`;
