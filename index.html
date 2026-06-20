@@ -3,7 +3,7 @@
 <title>My Medi Rides — Operations Dashboard</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <style>
-:root{--ink:#1f2937;--mut:#6b7280;--line:#e5e7eb;--brand:#1f4e78;--green:#0f7a3d;--red:#c0392b;--bg:#f7f8fa;}
+:root{--ink:#1f2937;--mut:#6b7280;--line:#e5e7eb;--brand:#1f4e78;--cost:#e08a1e;--bg:#f7f8fa;}
 *{box-sizing:border-box}
 body{margin:0;font-family:'Segoe UI',Helvetica,Arial,sans-serif;color:var(--ink);background:var(--bg);}
 header{background:var(--brand);color:#fff;padding:14px 22px;}
@@ -18,7 +18,7 @@ header p{margin:2px 0 0;font-size:12.5px;opacity:.85;}
 .seg button{border:0;background:#fff;padding:8px 16px;font-size:13px;font-weight:600;color:var(--mut);cursor:pointer;}
 .seg button.active{background:var(--brand);color:#fff;}
 select{padding:7px 10px;border:1px solid var(--line);border-radius:8px;font-size:13px;background:#fff;}
-.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:18px;}
+.kpis{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-bottom:18px;max-width:560px;}
 .kpi{background:#fff;border:1px solid var(--line);border-radius:10px;padding:13px 15px;}
 .kpi .l{font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--mut);}
 .kpi .v{font-size:23px;font-weight:700;margin-top:3px;}
@@ -29,13 +29,12 @@ table.dt th,table.dt td{padding:7px 9px;border-bottom:1px solid #f0f0f0;text-ali
 table.dt th{font-size:10.5px;text-transform:uppercase;color:var(--mut);border-bottom:1px solid var(--line);cursor:pointer;}
 table.dt td:first-child,table.dt th:first-child{text-align:left;}
 table.dt tr:hover td{background:#fafbfc;}
-.pos{color:var(--green);font-weight:600;} .neg{color:var(--red);font-weight:600;}
 .muted{color:var(--mut);font-size:12px;}
 .mapframe{width:100%;height:78vh;border:1px solid var(--line);border-radius:10px;background:#eef3f1;}
 .note{font-size:11.5px;color:#9ca3af;margin-top:12px;line-height:1.5;}
 @media(max-width:720px){.kpis{grid-template-columns:repeat(2,1fr)}}
 </style></head><body>
-<header><h1>My Medi Rides — Operations Dashboard</h1><p>Driver cost vs. revenue (Mar 16 – Jun 6, 2026) · Pickup demand by zip</p></header>
+<header><h1>My Medi Rides — Operations Dashboard</h1><p>Driver revenue vs. direct costs (Mar 16 – Jun 6, 2026) · Pickup demand by zip</p></header>
 <div class="tabs"><div class="tab active" data-tab="fin" onclick="showTab('fin')">Financials</div><div class="tab" data-tab="map" onclick="showTab('map')">Pickup Map</div></div>
 
 <div class="wrap" id="fin">
@@ -49,10 +48,10 @@ table.dt tr:hover td{background:#fafbfc;}
   <span class="muted" id="periodlbl"></span>
  </div>
  <div class="kpis" id="kpis"></div>
- <div class="card"><h3 id="charttitle">Revenue, cost &amp; net</h3><canvas id="chart" height="92"></canvas></div>
+ <div class="card"><h3 id="charttitle">Revenue vs. direct cost</h3><canvas id="chart" height="92"></canvas></div>
  <div class="card"><h3 id="tabletitle">Per-driver breakdown</h3>
   <table class="dt" id="dtable"><thead></thead><tbody></tbody></table>
-  <p class="note">Pay = payroll (Driver Totals). Fuel = fleet card. Insurance = $9,100/mo premium at $350/operating-day, allocated to drivers on the road. Revenue from trip reports. Drivers shown by first name. Click a column header to sort.</p>
+  <p class="note">Direct cost = Pay (payroll Driver Totals) + Fuel (fleet card) + Insurance ($9,100/mo premium at $350/operating-day, allocated to drivers on the road). Does not include overhead (office payroll, vehicle financing, software, fees, etc.), so revenue minus direct cost is not net profit. Revenue from trip reports. Drivers shown by first name. Click a column header to sort.</p>
  </div>
 </div>
 
@@ -68,22 +67,22 @@ const fmt=n=>'$'+Math.round(n).toLocaleString();
 const fmt1=n=>n.toLocaleString(undefined,{maximumFractionDigits:0});
 let grain='total', chart=null;
 function weekLabel(w){const d=new Date(w+'T00:00:00');return d.toLocaleDateString('en-US',{month:'short',day:'numeric'});}
-function agg(rows){let o={pay:0,fuel:0,ins:0,rev:0,trips:0,days:0,hours:0};rows.forEach(r=>{o.pay+=r.pay;o.fuel+=r.fuel;o.ins+=r.ins;o.rev+=r.rev;o.trips+=r.trips;o.days+=r.days;o.hours+=r.hours;});o.cost=o.pay+o.fuel+o.ins;o.net=o.rev-o.cost;o.margin=o.rev?o.net/o.rev:0;return o;}
+function agg(rows){let o={pay:0,fuel:0,ins:0,rev:0,trips:0,days:0,hours:0};rows.forEach(r=>{o.pay+=r.pay;o.fuel+=r.fuel;o.ins+=r.ins;o.rev+=r.rev;o.trips+=r.trips;o.days+=r.days;o.hours+=r.hours;});o.cost=o.pay+o.fuel+o.ins;return o;}
 function periods(){if(grain==='week')return [...new Set(REC.map(r=>r.week))].sort();if(grain==='month')return MONTHS.filter(m=>REC.some(r=>r.month===m));return ['ALL'];}
 function setGrain(g){grain=g;document.querySelectorAll('#grain button').forEach(b=>b.classList.toggle('active',b.dataset.g===g));const sel=document.getElementById('period');const ps=periods();if(g==='total'){sel.style.display='none';}else{sel.style.display='';sel.innerHTML=ps.map(p=>`<option value="${p}">${g==='week'?'Week of '+weekLabel(p):p}</option>`).join('');}render();}
 function curRows(){const sel=document.getElementById('period');if(grain==='total')return REC;if(grain==='month')return REC.filter(r=>r.month===sel.value);return REC.filter(r=>r.week===sel.value);}
-function kpiHTML(a){const cls=a.net>=0?'pos':'neg';return [['Revenue',fmt(a.rev)],['Total cost',fmt(a.cost)],['Net',`<span class="${cls}">${fmt(a.net)}</span>`],['Margin',(a.margin*100).toFixed(1)+'%']].map(([l,v])=>`<div class="kpi"><div class="l">${l}</div><div class="v">${v}</div></div>`).join('');}
-let sortKey='net',sortDir=-1;
-function drawTable(rows){const by={};rows.forEach(r=>{(by[r.driver]=by[r.driver]||[]).push(r);});let data=Object.entries(by).map(([d,rs])=>{const a=agg(rs);return {driver:d,...a};});data.sort((x,y)=>(x[sortKey]<y[sortKey]?1:-1)*sortDir);const cols=[['driver','Driver'],['trips','Trips'],['days','Days'],['pay','Pay'],['fuel','Fuel'],['ins','Insurance'],['cost','Cost'],['rev','Revenue'],['net','Net'],['margin','Margin']];document.querySelector('#dtable thead').innerHTML='<tr>'+cols.map(([k,l])=>`<th onclick="sortBy('${k}')">${l}</th>`).join('')+'</tr>';document.querySelector('#dtable tbody').innerHTML=data.map(r=>`<tr><td>${r.driver}</td><td>${fmt1(r.trips)}</td><td>${fmt1(r.days)}</td><td>${fmt(r.pay)}</td><td>${fmt(r.fuel)}</td><td>${fmt(r.ins)}</td><td>${fmt(r.cost)}</td><td>${fmt(r.rev)}</td><td class="${r.net>=0?'pos':'neg'}">${fmt(r.net)}</td><td>${(r.margin*100).toFixed(0)}%</td></tr>`).join('');}
+function kpiHTML(a){return [['Revenue',fmt(a.rev)],['Total direct cost',fmt(a.cost)]].map(([l,v])=>`<div class="kpi"><div class="l">${l}</div><div class="v">${v}</div></div>`).join('');}
+let sortKey='rev',sortDir=-1;
+function drawTable(rows){const by={};rows.forEach(r=>{(by[r.driver]=by[r.driver]||[]).push(r);});let data=Object.entries(by).map(([d,rs])=>{const a=agg(rs);return {driver:d,...a};});data.sort((x,y)=>(x[sortKey]<y[sortKey]?1:-1)*sortDir);const cols=[['driver','Driver'],['trips','Trips'],['days','Days'],['pay','Pay'],['fuel','Fuel'],['ins','Insurance'],['cost','Direct cost'],['rev','Revenue']];document.querySelector('#dtable thead').innerHTML='<tr>'+cols.map(([k,l])=>`<th onclick="sortBy('${k}')">${l}</th>`).join('')+'</tr>';document.querySelector('#dtable tbody').innerHTML=data.map(r=>`<tr><td>${r.driver}</td><td>${fmt1(r.trips)}</td><td>${fmt1(r.days)}</td><td>${fmt(r.pay)}</td><td>${fmt(r.fuel)}</td><td>${fmt(r.ins)}</td><td>${fmt(r.cost)}</td><td>${fmt(r.rev)}</td></tr>`).join('');}
 function sortBy(k){if(sortKey===k)sortDir*=-1;else{sortKey=k;sortDir=-1;}render();}
-function trend(){const ps=grain==='week'?[...new Set(REC.map(r=>r.week))].sort():MONTHS.filter(m=>REC.some(r=>r.month===m));const lab=ps.map(p=>grain==='week'?weekLabel(p):p);const f=grain==='week'?(p=>REC.filter(r=>r.week===p)):(p=>REC.filter(r=>r.month===p));return {lab,rev:ps.map(p=>agg(f(p)).rev),cost:ps.map(p=>agg(f(p)).cost),net:ps.map(p=>agg(f(p)).net)};}
+function trend(){const ps=grain==='week'?[...new Set(REC.map(r=>r.week))].sort():MONTHS.filter(m=>REC.some(r=>r.month===m));const lab=ps.map(p=>grain==='week'?weekLabel(p):p);const f=grain==='week'?(p=>REC.filter(r=>r.week===p)):(p=>REC.filter(r=>r.month===p));return {lab,rev:ps.map(p=>agg(f(p)).rev),cost:ps.map(p=>agg(f(p)).cost)};}
 function render(){const a=agg(curRows());document.getElementById('kpis').innerHTML=kpiHTML(a);
  const sel=document.getElementById('period');document.getElementById('periodlbl').textContent=grain==='total'?'Full 12-week period':(grain==='month'?sel.value+' (weeks grouped by start date)':'Week of '+weekLabel(sel.value));
  drawTable(curRows());
  const ctx=document.getElementById('chart');
- if(grain==='total'){const by={};REC.forEach(r=>{(by[r.driver]=by[r.driver]||[]).push(r);});let data=Object.entries(by).map(([d,rs])=>({d,net:agg(rs).net})).sort((x,y)=>y.net-x.net);document.getElementById('charttitle').textContent='Net profit / (loss) by driver';mkChart(ctx,'bar',data.map(x=>x.d),[{label:'Net',data:data.map(x=>x.net),backgroundColor:data.map(x=>x.net>=0?'#0f7a3d':'#c0392b')}]);}
- else{const t=trend();document.getElementById('charttitle').textContent='Revenue, cost & net by '+(grain==='week'?'week':'month');mkChart(ctx,'line',t.lab,[{label:'Revenue',data:t.rev,borderColor:'#1f4e78',backgroundColor:'#1f4e7822',tension:.25,fill:true},{label:'Cost',data:t.cost,borderColor:'#e08a1e',tension:.25},{label:'Net',data:t.net,borderColor:'#0f7a3d',tension:.25}]);}}
-function mkChart(ctx,type,labels,ds){if(chart)chart.destroy();chart=new Chart(ctx,{type,data:{labels,datasets:ds},options:{responsive:true,plugins:{legend:{display:type==='line'}},scales:{y:{ticks:{callback:v=>'$'+(v/1000)+'k'}}}}});}
+ if(grain==='total'){const by={};REC.forEach(r=>{(by[r.driver]=by[r.driver]||[]).push(r);});let data=Object.entries(by).map(([d,rs])=>{const a=agg(rs);return {d,rev:a.rev,cost:a.cost};}).sort((x,y)=>y.rev-x.rev);document.getElementById('charttitle').textContent='Revenue vs. direct cost by driver';mkChart(ctx,'bar',data.map(x=>x.d),[{label:'Revenue',data:data.map(x=>x.rev),backgroundColor:'#1f4e78'},{label:'Direct cost',data:data.map(x=>x.cost),backgroundColor:'#e08a1e'}],true);}
+ else{const t=trend();document.getElementById('charttitle').textContent='Revenue vs. direct cost by '+(grain==='week'?'week':'month');mkChart(ctx,'line',t.lab,[{label:'Revenue',data:t.rev,borderColor:'#1f4e78',backgroundColor:'#1f4e7822',tension:.25,fill:true},{label:'Direct cost',data:t.cost,borderColor:'#e08a1e',tension:.25}],true);}}
+function mkChart(ctx,type,labels,ds,legend){if(chart)chart.destroy();chart=new Chart(ctx,{type,data:{labels,datasets:ds},options:{responsive:true,plugins:{legend:{display:!!legend}},scales:{y:{ticks:{callback:v=>'$'+(v/1000)+'k'}}}}});}
 function showTab(t){document.getElementById('fin').style.display=t==='fin'?'':'none';document.getElementById('map').style.display=t==='map'?'':'none';document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('active',x.dataset.tab===t));}
 setGrain('total');
 </script></body></html>
