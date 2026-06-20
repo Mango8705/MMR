@@ -52,6 +52,9 @@ table.sa td.cell.drag{opacity:.5}
 .sa-grid{position:absolute;top:0;bottom:0;border-left:1px solid #eef0f2}
 .sa-blk{position:absolute;top:2px;height:26px;line-height:26px;text-align:center;font-size:9.5px;font-weight:700;color:#fff;overflow:hidden;cursor:pointer;border-radius:2px;box-sizing:border-box}
 .sa-blk.moved{outline:2px dashed #111827;outline-offset:-2px}
+.sa-absent{color:#cbd5e1!important}
+.sa-track.sa-absent-tr{background:repeating-linear-gradient(45deg,#fafafa,#fafafa 6px,#f1f1f1 6px,#f1f1f1 12px);opacity:.7}
+.sa-absent-lbl{position:absolute;left:8px;top:7px;font-size:10px;color:#9ca3af;font-style:italic}
 .sa-L{background:#0f7a3d}.sa-R{background:#54b06f}
 .sa-O{background:repeating-linear-gradient(45deg,#fff,#fff 4px,#f3f4f6 4px,#f3f4f6 8px);color:#9ca3af;border:1px solid #e5e7eb}
 .sa-leg{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;margin:6px 0}
@@ -262,14 +265,16 @@ function sBuild(day){
  let gmin=1e9,gmax=0;
  recs.forEach(r=>r.segs.forEach(s=>{gmin=Math.min(gmin,s.a);gmax=Math.max(gmax,s.b);}));
  gmin=Math.floor(gmin/60)*60; gmax=Math.ceil(gmax/60)*60;
- const drivers=recs.map(r=>{
+ let drivers=recs.map(r=>{
   const segs=r.segs.map(s=>({a:s.a,b:s.b,orig:s.k,cur:s.k,gid:null,moved:false,
     trip:(s.fare!=null?{pu:s.pu,do:s.do,fare:s.fare,mi:s.mi,los:s.los,pla:s.pla,plo:s.plo,dla:s.dla,dlo:s.dlo}:null)}));
   let g=0;
   for(let i=0;i<segs.length;i++){ if(segs[i].orig==='L'){segs[i].gid=g;let k=i-1;while(k>=0&&segs[k].orig==='R'&&segs[k].gid==null){segs[k].gid=g;k--;}g++;} }
   return {driver:r.driver,van:r.van,rate:r.rate,segs};
  });
- drivers.sort((a,b)=>a.driver<b.driver?-1:(a.driver>b.driver?1:0));
+ const actByName={}; drivers.forEach(d=>actByName[d.driver]=d);
+ const allDrv={}; SHIFT.recs.forEach(r=>{if(!allDrv[r.driver])allDrv[r.driver]={van:r.van,rate:r.rate};});
+ drivers=Object.keys(allDrv).sort().map(nm=>actByName[nm]||{driver:nm,van:allDrv[nm].van,rate:allDrv[nm].rate,segs:[],absent:true});
  // pair round-trip legs (return leg = reversed pickup/dropoff of an earlier leg, same driver)
  let pc=0;
  drivers.forEach(d=>{const ls=d.segs.filter(s=>s.cur==='L'&&s.trip).sort((x,y)=>x.a-y.a);
@@ -300,10 +305,11 @@ function sRender(){const m=sModel;m.drivers.forEach(d=>units(d));const W=(m.gmax
  for(let t=m.gmin;t<=m.gmax;t+=60){axis+='<span class="sa-tick" style="left:'+((t-m.gmin)*PPM)+'px">'+hLab(t)+'</span>';}
  axis+='</div>';
  let cal=axis; let dayNet=0;
- m.drivers.forEach((d,di)=>{const n=sNet(d);dayNet+=n.net;
-  names+='<div class="sarow saname2">'+d.driver+' · v'+d.van+'</div>';
-  nets+='<div class="sarow sanet2 '+(n.net>=0?'pos':'neg')+'">'+(n.net>=0?'$'+Math.round(n.net):'($'+Math.round(-n.net)+')')+'</div>';
-  let track='<div class="sa-track" data-di="'+di+'" style="width:'+W+'px">';
+ m.drivers.forEach((d,di)=>{const n=sNet(d);if(!d.absent)dayNet+=n.net;
+  const ab=d.absent;
+  names+='<div class="sarow saname2'+(ab?' sa-absent':'')+'">'+d.driver+' · v'+d.van+'</div>';
+  nets+='<div class="sarow sanet2 '+(ab?'sa-absent':(n.net>=0?'pos':'neg'))+'">'+(ab?'\u2014':(n.net>=0?'$'+Math.round(n.net):'($'+Math.round(-n.net)+')'))+'</div>';
+  let track='<div class="sa-track'+(ab?' sa-absent-tr':'')+'" data-di="'+di+'"'+(ab?' data-absent="1"':'')+' style="width:'+W+'px">'+(ab?'<span class="sa-absent-lbl">did not work this day</span>':'');
   for(let t=m.gmin+60;t<m.gmax;t+=60){track+='<div class="sa-grid" style="left:'+((t-m.gmin)*PPM)+'px"></div>';}
   d.segs.forEach((s,si)=>{const left=(s.a-m.gmin)*PPM,wpx=(s.b-s.a)*PPM;
    const drg=(s.gid!=null&&(s.cur==='L'||s.cur==='R'))?'draggable="true"':'';
@@ -322,7 +328,7 @@ function bindSA(){const c=document.getElementById('stable');
   el.onclick=()=>sFlip(+el.dataset.di,+el.dataset.si);
   el.ondragstart=e=>{const d=sModel.drivers[+el.dataset.di];const s=d.segs[+el.dataset.si];sDrag=(s.gid!=null)?{kind:'driver',di:+el.dataset.di,gid:s.gid}:null;if(sDrag)e.dataTransfer.setData('text','x');};
  });
- [...c.querySelectorAll('.sa-track[data-di]')].forEach(tr=>{
+ [...c.querySelectorAll('.sa-track[data-di]')].forEach(tr=>{ if(tr.dataset.absent)return;
   tr.ondragover=e=>{e.preventDefault();};
   tr.ondrop=e=>{e.preventDefault();sDrop(+tr.dataset.di);};
  });
@@ -332,6 +338,7 @@ function sModal(msg,yesLabel,noLabel,onYes,onNo,onCancel){
  const ov=document.createElement('div');ov.className='samodal';
  ov.innerHTML='<div class="samodal-box"><div class="samodal-msg"></div><div class="samodal-btns"><button class="b-yes"></button><button class="b-no"></button><button class="b-cancel">Cancel</button></div></div>';
  ov.querySelector('.samodal-msg').textContent=msg;ov.querySelector('.b-yes').textContent=yesLabel;ov.querySelector('.b-no').textContent=noLabel;
+ document.body.appendChild(ov);
  const close=()=>ov.remove();
  ov.querySelector('.b-yes').onclick=()=>{close();onYes&&onYes();};
  ov.querySelector('.b-no').onclick=()=>{close();onNo&&onNo();};
