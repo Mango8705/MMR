@@ -32,7 +32,7 @@ table.dt tr:hover td{background:#fafbfc;}
 @media(max-width:720px){.kpis{grid-template-columns:repeat(2,1fr)}}
 </style></head><body>
 <header style="display:flex;align-items:center;justify-content:space-between;gap:12px"><div><h1>My Medi Rides — Operations Dashboard</h1><p>Driver revenue vs. direct costs (Mar 16 – Jun 6, 2026) · Pickup demand by zip</p></div><button onclick="doRefresh(this)" title="Reload the latest published data for this tab" style="background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.45);border-radius:6px;padding:7px 13px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap">&#x21bb; Refresh</button></header>
-<div class="tabs"><div class="tab active" data-tab="fin" onclick="showTab('fin')">Financials</div><div class="tab" data-tab="ue" onclick="showTab('ue')">Unit Economics</div><div class="tab" data-tab="brk" onclick="showTab('brk')">By Broker</div><div class="tab" data-tab="map" onclick="showTab('map')">Pickup Map</div></div>
+<div class="tabs"><div class="tab active" data-tab="fin" onclick="showTab('fin')">Financials</div><div class="tab" data-tab="ue" onclick="showTab('ue')">Unit Economics</div><div class="tab" data-tab="brk" onclick="showTab('brk')">By Broker</div><div class="tab" data-tab="prod" onclick="showTab('prod')">Productivity</div><div class="tab" data-tab="map" onclick="showTab('map')">Pickup Map</div></div>
 
 <div class="wrap" id="fin">
  <div class="controls"><div class="seg" id="grain">
@@ -72,6 +72,18 @@ table.dt tr:hover td{background:#fafbfc;}
   <h4>Level of service</h4><table class="dt" id="bltable"><thead></thead><tbody></tbody></table>
   <h4>Drivers</h4><table class="dt" id="bdtable"><thead></thead><tbody></tbody></table>
   <p class="note">For the selected broker: revenue, allocated cost, Rev − cost, margin and rev/trip — broken out by level of service (Ambulatory, Wheelchair, Bariatric Wheelchair, Stretcher) and by driver, for the selected period. Rev/Trip uses paid (fare-bearing) trips; Trips is total trips.</p></div>
+</div>
+
+<div class="wrap" id="prod" style="display:none">
+ <div class="controls"><div class="seg" id="pgrain">
+   <button data-g="total" class="active" onclick="pSetGrain('total')">Total</button>
+   <button data-g="day" onclick="pSetGrain('day')">Per Day</button>
+   <button data-g="week" onclick="pSetGrain('week')">Per Week</button>
+   <button data-g="month" onclick="pSetGrain('month')">Per Month</button></div>
+   <span class="note" id="pgrainlbl" style="margin-left:8px"></span></div>
+ <div class="card"><h3>Productive vs. idle time by driver</h3><div style="height:430px"><canvas id="pchart"></canvas></div></div>
+ <div class="card"><h3>Hours by driver</h3><table class="dt" id="ptable"><thead></thead><tbody></tbody></table>
+  <p class="note">From RouteGenie shift telemetry (Mar 16 – Jun 6, 2026). <b>Productive</b> = Loaded (passenger onboard) + En-route (driving to pickup). <b>Idle</b> = RouteGenie "Wait" time (on the clock, not moving a passenger or en route). <b>Utilization</b> = Productive ÷ (Productive + Idle), shaded red (low) → green (high). Steve's shifts have no route timeline in RouteGenie, so he shows no data. Click any header to sort.</p></div>
 </div>
 
 <div class="wrap" id="map" style="display:none">
@@ -156,7 +168,26 @@ function ueRender(){const by={};ueCur().forEach(r=>{const o=by[r.driver]=by[r.dr
  document.querySelector('#uetable tbody').innerHTML=data.map(d=>`<tr><td>${d.driver}</td><td>${fmt1(d.days)}</td><td>${fmt1(d.ptrips)}</td><td>${d.tpd.toFixed(1)}</td><td class="${d.ppd>=0?'pos':'neg'}">${fmtS(d.ppd)}</td><td>${fmt(d.cpd)}</td><td>${fmt(d.fpd)}</td><td>${fmt(d.lpd)}</td><td class="${d.ppt>=0?'pos':'neg'}">${fmtSc(d.ppt)}</td><td>${fmtc(d.cpt)}</td><td>${fmtc(d.fpt)}</td><td>${fmtc(d.lpt)}</td></tr>`).join('');
  const srt=[...data].sort((p,q)=>q.ppt-p.ppt);if(uechart)uechart.destroy();
  uechart=new Chart(document.getElementById('uechart'),{type:'bar',data:{labels:srt.map(d=>d.driver),datasets:[{label:'Profit / paid trip',data:srt.map(d=>d.ppt),backgroundColor:srt.map(d=>d.ppt>=0?'#0f7a3d':'#c0392b')}]},options:{responsive:true,plugins:{legend:{display:false}},scales:{y:{ticks:{callback:v=>'$'+v}}}}});}
-function showTab(t){['fin','ue','brk','map'].forEach(v=>document.getElementById(v).style.display=v===t?'':'none');document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('active',x.dataset.tab===t));if(t==='brk'&&!window._bi){window._bi=1;bSetGrain('total');}if(t==='ue'&&!window._ui){window._ui=1;ueSetGrain('total');}}
+/* PRODUCTIVITY */
+const PROD=[{"f":"Gerald","idle":23436,"loaded":9284,"enroute":12285,"span":47905,"sh":67,"d":67,"w":12,"m":4},{"f":"Kerry","idle":18030,"loaded":5533,"enroute":7748,"span":32616,"sh":49,"d":49,"w":12,"m":4},{"f":"Rick","idle":17584,"loaded":11687,"enroute":19567,"span":52260,"sh":70,"d":68,"w":12,"m":4},{"f":"Thomas","idle":15954,"loaded":9434,"enroute":11600,"span":40403,"sh":57,"d":57,"w":12,"m":4},{"f":"Moses","idle":15015,"loaded":4568,"enroute":6140,"span":27455,"sh":54,"d":54,"w":12,"m":4},{"f":"Keary","idle":10353,"loaded":7596,"enroute":14969,"span":34110,"sh":63,"d":55,"w":12,"m":4},{"f":"Eric","idle":8956,"loaded":6513,"enroute":12113,"span":30442,"sh":47,"d":47,"w":12,"m":4},{"f":"Lonnie","idle":8686,"loaded":7229,"enroute":12738,"span":30679,"sh":45,"d":45,"w":10,"m":3},{"f":"Ramona","idle":8631,"loaded":4996,"enroute":11862,"span":27791,"sh":47,"d":46,"w":9,"m":3},{"f":"Jhennissa","idle":7354,"loaded":1688,"enroute":1813,"span":11229,"sh":19,"d":19,"w":7,"m":3},{"f":"Anthony","idle":6760,"loaded":6389,"enroute":4788,"span":19135,"sh":28,"d":28,"w":12,"m":4},{"f":"Joseph","idle":3878,"loaded":408,"enroute":649,"span":3365,"sh":9,"d":9,"w":3,"m":2},{"f":"Mackson","idle":2377,"loaded":3273,"enroute":5781,"span":12331,"sh":20,"d":20,"w":8,"m":4},{"f":"Ginette","idle":679,"loaded":251,"enroute":371,"span":1339,"sh":3,"d":3,"w":1,"m":1},{"f":"Chantay","idle":676,"loaded":51,"enroute":62,"span":836,"sh":1,"d":1,"w":1,"m":1},{"f":"Jimmy","idle":107,"loaded":33,"enroute":25,"span":114,"sh":3,"d":3,"w":3,"m":2},{"f":"Daniel","idle":59,"loaded":189,"enroute":229,"span":500,"sh":2,"d":2,"w":1,"m":1},{"f":"Steve","idle":0,"loaded":0,"enroute":0,"span":0,"sh":29,"d":29,"w":11,"m":4}];
+let pGrain='total',pSortKey='util',pSortDir=1,pchart=null;
+function pSetGrain(g){pGrain=g;document.querySelectorAll('#pgrain button').forEach(b=>b.classList.toggle('active',b.dataset.g===g));pRender();}
+function pSortBy(k){if(pSortKey===k)pSortDir*=-1;else{pSortKey=k;pSortDir=1;}pRender();}
+function pColor(u){const t=Math.max(0,Math.min(1,u));const h=Math.round(t*120);return 'hsl('+h+',65%,42%)';}
+function pRender(){
+ const lbl={total:'Total hours over the period',day:'Average per operating day',week:'Average per active week',month:'Average per active month'}[pGrain];
+ document.getElementById('pgrainlbl').textContent=lbl;
+ const data=PROD.map(r=>{const prod=r.loaded+r.enroute;const den=pGrain==='total'?1:(pGrain==='day'?r.d:(pGrain==='week'?r.w:r.m))||1;
+  return {f:r.f,sh:r.sh,d:r.d,idleH:r.idle/60/den,prodH:prod/60/den,loadedH:r.loaded/60/den,enrouteH:r.enroute/60/den,util:(prod+r.idle)>0?prod/(prod+r.idle):0,has:r.span>0};});
+ const sk=pSortKey;data.sort((p,q)=>(p[sk]<q[sk]?1:-1)*pSortDir);
+ const cols=[['f','Driver'],['sh','Shifts'],['d','Days'],['idleH','Idle h'],['enrouteH','En-route h'],['loadedH','Loaded h'],['prodH','Productive h'],['util','Utilization']];
+ document.querySelector('#ptable thead').innerHTML='<tr>'+cols.map(([k,l])=>`<th onclick="pSortBy('${k}')">${l}${pSortKey===k?(pSortDir>0?' \u25bc':' \u25b2'):''}</th>`).join('')+'</tr>';
+ document.querySelector('#ptable tbody').innerHTML=data.map(r=>r.has?`<tr><td>${r.f}</td><td>${fmt1(r.sh)}</td><td>${fmt1(r.d)}</td><td class="neg">${r.idleH.toFixed(1)}</td><td>${r.enrouteH.toFixed(1)}</td><td>${r.loadedH.toFixed(1)}</td><td class="pos">${r.prodH.toFixed(1)}</td><td><span style="background:${pColor(r.util)};color:#fff;padding:2px 9px;border-radius:10px;font-weight:700">${(r.util*100).toFixed(0)}%</span></td></tr>`:`<tr><td>${r.f}</td><td>${fmt1(r.sh)}</td><td>${fmt1(r.d)}</td><td colspan="5" style="color:#9ca3af">no route timeline in RouteGenie</td></tr>`).join('');
+ const srt=data.filter(r=>r.has).sort((p,q)=>q.util-p.util);
+ if(pchart)pchart.destroy();
+ pchart=new Chart(document.getElementById('pchart'),{type:'bar',data:{labels:srt.map(r=>r.f),datasets:[{label:'Productive',data:srt.map(r=>r.prodH),backgroundColor:'#0f7a3d'},{label:'Idle',data:srt.map(r=>r.idleH),backgroundColor:'#c0392b'}]},options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,scales:{x:{stacked:true,ticks:{callback:v=>v+'h'}},y:{stacked:true}},plugins:{legend:{display:true},tooltip:{callbacks:{label:c=>c.dataset.label+': '+c.parsed.x.toFixed(1)+'h'}}}}});
+}
+function showTab(t){['fin','ue','brk','prod','map'].forEach(v=>document.getElementById(v).style.display=v===t?'':'none');document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('active',x.dataset.tab===t));if(t==='brk'&&!window._bi){window._bi=1;bSetGrain('total');}if(t==='ue'&&!window._ui){window._ui=1;ueSetGrain('total');}if(t==='prod'&&!window._pi){window._pi=1;pRender();}}
 function doRefresh(btn){var a=document.querySelector('.tab.active');a=a?a.dataset.tab:'fin';if(btn){btn.textContent='\u21bb Refreshing\u2026';}if(a==='map'){var f=document.querySelector('.mapframe');var b=f.src.split('?')[0];f.src=b+'?t='+Date.now();setTimeout(function(){if(btn)btn.textContent='\u21bb Refresh';},900);}else{location.href=location.pathname+'?t='+Date.now()+'#'+a;}}
 setGrain('total');
 (function(){var h=(location.hash||'').replace('#','');if(['fin','ue','brk','map'].indexOf(h)>=0)showTab(h);})();
