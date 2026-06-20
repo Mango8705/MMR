@@ -37,14 +37,20 @@ table.sa td.net{font-weight:700;text-align:right;white-space:nowrap;padding-left
 .sa-O{background:#fff;color:#9ca3af;border:2px solid #e5e7eb}
 table.sa td.edited{outline:2px dashed #1f2937;outline-offset:-2px}
 table.sa td.cell.drag{opacity:.5}
-.sa-row{display:flex;align-items:center;margin:2px 0}
-.sa-name{width:120px;font-weight:700;font-size:11.5px;text-align:right;padding-right:8px;flex:none;white-space:nowrap;position:sticky;left:0;z-index:3;background:#fff}
-.sa-netc{width:74px;font-weight:700;font-size:12px;text-align:right;padding-left:8px;flex:none;position:sticky;right:0;z-index:3;background:#fff;border-left:2px solid #e5e7eb}
-.sa-axis{position:relative;height:14px}
-.sa-tick{position:absolute;font-size:9px;color:#9ca3af;transform:translateX(-1px)}
-.sa-track{position:relative;height:28px;background:#fafbfc;border:1px solid #eef0f2;border-radius:4px;flex:none}
+.saflex{display:flex;align-items:flex-start}
+.sacol{flex:none;background:#fff}
+.sacolcal{flex:1 1 auto;overflow-x:auto}
+.sacolnet{border-left:2px solid #e5e7eb;background:#fff}
+.sarow{height:30px;margin-bottom:3px;display:flex;align-items:center;box-sizing:border-box}
+.sahdr{height:16px;margin-bottom:3px;display:flex;align-items:flex-end}
+.saname2{width:122px;justify-content:flex-end;padding-right:8px;font-weight:700;font-size:11.5px;white-space:nowrap}
+.sanet2{width:82px;justify-content:flex-end;padding:0 8px;font-weight:700;font-size:12px}
+.sanethdr{justify-content:flex-end;padding:0 8px;font-weight:700;font-size:10px;color:#9ca3af;text-transform:uppercase}
+.sa-axis{position:relative;height:16px;margin-bottom:3px}
+.sa-tick{position:absolute;font-size:9px;color:#9ca3af;transform:translateX(-1px);bottom:0}
+.sa-track{position:relative;height:30px;margin-bottom:3px;background:#fafbfc;border:1px solid #eef0f2;border-radius:4px;flex:none}
 .sa-grid{position:absolute;top:0;bottom:0;border-left:1px solid #eef0f2}
-.sa-blk{position:absolute;top:0;height:26px;line-height:26px;text-align:center;font-size:9.5px;font-weight:700;color:#fff;overflow:hidden;cursor:pointer;border-radius:2px;box-sizing:border-box}
+.sa-blk{position:absolute;top:2px;height:26px;line-height:26px;text-align:center;font-size:9.5px;font-weight:700;color:#fff;overflow:hidden;cursor:pointer;border-radius:2px;box-sizing:border-box}
 .sa-blk.moved{outline:2px dashed #111827;outline-offset:-2px}
 .sa-L{background:#0f7a3d}.sa-R{background:#54b06f}
 .sa-O{background:repeating-linear-gradient(45deg,#fff,#fff 4px,#f3f4f6 4px,#f3f4f6 8px);color:#9ca3af;border:1px solid #e5e7eb}
@@ -267,21 +273,24 @@ function blkTitle(s){const dm=Math.round(s.b-s.a);const hm=dm>=60?(Math.floor(dm
 function driverLocAt(d,t){let cand=null;d.segs.forEach(s=>{if(s.cur==='L'&&s.trip&&s.a<=t&&(!cand||s.a>cand.a))cand=s;});return cand?{la:cand.trip.dla,lo:cand.trip.dlo}:null;}
 function sRender(){const m=sModel;m.drivers.forEach(d=>units(d));const W=(m.gmax-m.gmin)*PPM;
  document.getElementById('stitle').textContent='Shift report — '+sDay+'/2026';
+ let names='<div class="sarow sahdr"></div>';
+ let nets='<div class="sarow sahdr sanethdr">Net</div>';
  let axis='<div class="sa-axis" style="width:'+W+'px">';
  for(let t=m.gmin;t<=m.gmax;t+=60){axis+='<span class="sa-tick" style="left:'+((t-m.gmin)*PPM)+'px">'+hLab(t)+'</span>';}
  axis+='</div>';
- let body='';let dayNet=0;
+ let cal=axis; let dayNet=0;
  m.drivers.forEach((d,di)=>{const n=sNet(d);dayNet+=n.net;
+  names+='<div class="sarow saname2">'+d.driver+' · v'+d.van+'</div>';
+  nets+='<div class="sarow sanet2 '+(n.net>=0?'pos':'neg')+'">'+(n.net>=0?'$'+Math.round(n.net):'($'+Math.round(-n.net)+')')+'</div>';
   let track='<div class="sa-track" data-di="'+di+'" style="width:'+W+'px">';
   for(let t=m.gmin+60;t<m.gmax;t+=60){track+='<div class="sa-grid" style="left:'+((t-m.gmin)*PPM)+'px"></div>';}
   d.segs.forEach((s,si)=>{const left=(s.a-m.gmin)*PPM,wpx=(s.b-s.a)*PPM;
    const drg=(s.gid!=null&&(s.cur==='L'||s.cur==='R'))?'draggable="true"':'';
    track+='<div class="sa-blk '+blkClass(s)+(s.moved?' moved':'')+'" '+drg+' data-di="'+di+'" data-si="'+si+'" style="left:'+left+'px;width:'+Math.max(wpx,2)+'px" title="'+blkTitle(s).replace(/"/g,'')+'">'+blkText(s,wpx)+'</div>';
   });
-  track+='</div>';
-  body+='<div class="sa-row"><div class="sa-name">'+d.driver+' · v'+d.van+'</div>'+track+'<div class="sa-netc '+(n.net>=0?'pos':'neg')+'">'+(n.net>=0?'$'+Math.round(n.net):'($'+Math.round(-n.net)+')')+'</div></div>';
+  track+='</div>'; cal+=track;
  });
- document.getElementById('stable').innerHTML='<div class="sa-row"><div class="sa-name"></div>'+axis+'<div class="sa-netc">Net</div></div>'+body;
+ document.getElementById('stable').innerHTML='<div class="saflex"><div class="sacol">'+names+'</div><div class="sacolcal">'+cal+'</div><div class="sacol sacolnet">'+nets+'</div></div>';
  document.getElementById('sdaynet').textContent='Day total net: '+(dayNet>=0?'$'+Math.round(dayNet):'−$'+Math.round(-dayNet));
  bindSA();
 }
