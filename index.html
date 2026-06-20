@@ -68,7 +68,7 @@ table.dt tr:hover td{background:#fafbfc;}
  <div class="card"><h3>Per-broker profitability</h3><table class="dt" id="btable"><thead></thead><tbody></tbody></table>
   <p class="note">Broker = payer on each trip. Direct cost is allocated from the Financials tab: each driver's pay+fuel+insurance split across the brokers they served, by trips. "Rev − cost" / Margin show profitability per broker; excludes overhead, so not net profit. Rev/Trip uses paid (fare-bearing) trips ($0 trips excluded); the Trips column is total trips. Click any header to sort.</p></div>
  <div class="card"><h3>Broker detail</h3>
-  <select id="bsel" onchange="bDetail()" style="margin-bottom:6px"></select>
+  <div id="bchecks" style="display:flex;flex-wrap:wrap;gap:5px 14px;margin-bottom:8px;align-items:center;font-size:13px"></div>
   <h4>Level of service</h4><table class="dt" id="bltable"><thead></thead><tbody></tbody></table>
   <h4>Drivers</h4><table class="dt" id="bdtable"><thead></thead><tbody></tbody></table>
   <p class="note">For the selected broker: revenue, allocated cost, Rev − cost, margin and rev/trip — broken out by level of service (Ambulatory, Wheelchair, Bariatric Wheelchair, Stretcher) and by driver, for the selected period. Rev/Trip uses paid (fare-bearing) trips; Trips is total trips.</p></div>
@@ -123,12 +123,19 @@ function bRender(){const {dc,dt}=bMaps();let data=grp(bCur(),'broker',dc,dt);
  document.querySelector('#btable tbody').innerHTML=data.map(d=>`<tr><td>${d.k}</td><td>${fmt1(d.trips)}</td><td>${fmt(d.rev)}</td><td>${fmt(d.cost)}</td><td class="${d.delta>=0?'pos':'neg'}">${fmtS(d.delta)}</td><td class="${d.delta>=0?'pos':'neg'}">${(d.margin*100).toFixed(0)}%</td><td>$${d.rpt.toFixed(2)}</td></tr>`).join('');
  const srt=[...data].sort((p,q)=>q.rev-p.rev);if(bchart)bchart.destroy();
  bchart=new Chart(document.getElementById('bchart'),{type:'bar',data:{labels:srt.map(d=>d.k),datasets:[{label:'Revenue',data:srt.map(d=>d.rev),backgroundColor:'#1f4e78'},{label:'Direct cost',data:srt.map(d=>d.cost),backgroundColor:'#e08a1e'}]},options:{responsive:true,plugins:{legend:{display:true}},scales:{y:{ticks:{callback:v=>'$'+(v/1000)+'k'}}}}});
- const bs=document.getElementById('bsel');const cur=bs.value;bs.innerHTML=ALLBROKERS.map(b=>`<option ${b===cur?'selected':''}>${b}</option>`).join('');bDetail();}
+ bBuildChecks();bDetail();}
 function tbl(elId,keyLabel,rows,ext){const ec=ext?'<th>Amb trips</th><th>WC trips</th>':'';const head='<tr><th>'+keyLabel+'</th><th>Trips</th>'+ec+'<th>Revenue</th><th>Direct cost</th><th>Rev − cost</th><th>Margin</th><th>Rev/Trip</th></tr>';
  document.querySelector('#'+elId+' thead').innerHTML=head;
  const cspan=ext?9:7;
- document.querySelector('#'+elId+' tbody').innerHTML=rows.length?rows.map(x=>`<tr><td>${x.k}</td><td>${fmt1(x.trips)}</td>${ext?`<td>${fmt1(x.amb)}</td><td>${fmt1(x.wc)}</td>`:''}<td>${fmt(x.rev)}</td><td>${fmt(x.cost)}</td><td class="${x.delta>=0?'pos':'neg'}">${fmtS(x.delta)}</td><td class="${x.delta>=0?'pos':'neg'}">${(x.margin*100).toFixed(0)}%</td><td>$${x.rpt.toFixed(2)}</td></tr>`).join(''):`<tr><td colspan="${cspan}" style="text-align:center;color:#9ca3af;padding:10px">No trips for this broker in the selected period.</td></tr>`;}
-function bDetail(){const bk=document.getElementById('bsel').value;const {dc,dt}=bMaps();const rows=bCur().filter(r=>r.broker===bk);
+ document.querySelector('#'+elId+' tbody').innerHTML=rows.length?rows.map(x=>`<tr><td>${x.k}</td><td>${fmt1(x.trips)}</td>${ext?`<td>${fmt1(x.amb)}</td><td>${fmt1(x.wc)}</td>`:''}<td>${fmt(x.rev)}</td><td>${fmt(x.cost)}</td><td class="${x.delta>=0?'pos':'neg'}">${fmtS(x.delta)}</td><td class="${x.delta>=0?'pos':'neg'}">${(x.margin*100).toFixed(0)}%</td><td>$${x.rpt.toFixed(2)}</td></tr>`).join(''):`<tr><td colspan="${cspan}" style="text-align:center;color:#9ca3af;padding:10px">No trips for the selected broker(s) in this period.</td></tr>`;}
+let bSel=null;
+function bSelSet(){if(!bSel)bSel=new Set(ALLBROKERS);return bSel;}
+function bToggleIdx(i,on){const s=bSelSet();if(on)s.add(ALLBROKERS[i]);else s.delete(ALLBROKERS[i]);bBuildChecks();bDetail();}
+function bToggleAll(on){bSel=on?new Set(ALLBROKERS):new Set();bBuildChecks();bDetail();}
+function bBuildChecks(){const s=bSelSet();const el=document.getElementById('bchecks');if(!el)return;const allOn=ALLBROKERS.every(b=>s.has(b));
+ const cb=(checked,handler,label,bold)=>`<label style="cursor:pointer;display:inline-flex;align-items:center;gap:4px${bold?';font-weight:700':''}"><input type="checkbox" ${checked?'checked':''} onchange="${handler}">${label}</label>`;
+ el.innerHTML=cb(allOn,'bToggleAll(this.checked)','All',true)+'<span style="color:#cbd5e1">|</span>'+ALLBROKERS.map((b,i)=>cb(s.has(b),`bToggleIdx(${i},this.checked)`,b,false)).join('');}
+function bDetail(){const sel=bSelSet();const {dc,dt}=bMaps();const rows=bCur().filter(r=>sel.has(r.broker));
  const losOrder={'Ambulatory':0,'Wheelchair':1,'Bariatric Wheelchair':2,'Stretcher':3};
  let los=grp(rows,'los',dc,dt).sort((p,q)=>(losOrder[p.k]??9)-(losOrder[q.k]??9));tbl('bltable','Service',los);
  let drv=grp(rows,'driver',dc,dt).sort((p,q)=>q.delta-p.delta);tbl('bdtable','Driver',drv,true);}
