@@ -129,7 +129,7 @@ table.sa td.cell.drag{opacity:.5}
    <span><i class="sa-sw sa-AL"></i>Loading (passenger)</span><span><i class="sa-sw sa-AR"></i>In route</span>
    <span><i class="sa-sw sa-w1"></i>Wait &lt;1h</span><span><i class="sa-sw sa-w2"></i>Wait 1–2h</span><span><i class="sa-sw sa-w3"></i>Wait &gt;2h</span><span><i class="sa-sw sa-O"></i>Off</span></div>
  <h3 id="stitle" style="margin:6px 0 8px">Shift report</h3><div style="display:flex;gap:8px;align-items:flex-start"><div class="card sa-wrap" style="flex:1 1 auto;min-width:0;margin:0"><div id="stable"></div></div><div class="card" style="flex:none;margin:0;padding:12px 4px"><div id="snetinner"></div></div></div>
-  <p class="note">Drag a trip onto another driver's row to reassign it. A trip moves as a unit (the drive-to-pickup Route + the Loaded leg together) and keeps its exact original time slot; the receiving driver's overlapping time is displaced to Wait, and the original driver's slot becomes Wait. If the new driver is more than 5 miles from the pickup at that time, you'll be asked to confirm. Click any block to flip it Off → Wait → back to original. Blocks are drawn to actual length (down to the minute); narrow ones are abbreviated R/L/W. Hover for pickup→dropoff. Net = revenue − labor (driver's hourly rate) − fuel (drive $6.25/hr, idle $1.98/hr) − insurance ($350/operating day, dropped if the van is parked all day). Sample days from RouteGenie, bounded to each driver's payroll clock-in/out (pre-shift and post-shift time excluded). Steve excluded (no route telemetry).</p>
+  <p class="note">Drag a trip onto another driver's row to reassign it. A trip moves as a unit (the drive-to-pickup Route + the Loaded leg together) and keeps its exact original time slot; the receiving driver's overlapping time is displaced to Wait, and the original driver's slot becomes Wait. If the incoming trip displaces a driver's drive-to-pickup (Route), that trip's Load is also dropped to Wait — you can't load a patient you didn't drive to. If the new driver is more than 5 miles from the pickup at that time, you'll be asked to confirm. Click any block to flip it Off → Wait → back to original. Blocks are drawn to actual length (down to the minute); narrow ones are abbreviated R/L/W. Hover for pickup→dropoff. Net = revenue − labor (driver's hourly rate) − fuel (drive $6.25/hr, idle $1.98/hr) − insurance ($350/operating day, dropped if the van is parked all day). Sample days from RouteGenie, bounded to each driver's payroll clock-in/out (pre-shift and post-shift time excluded). Steve excluded (no route telemetry).</p>
 </div>
 
 <div class="wrap" id="map" style="display:none">
@@ -324,9 +324,13 @@ function sDrop(diT){if(!sDrag)return;const src=sModel.drivers[sDrag.di];if(diT==
  src.segs=src.segs.filter(s=>s.gid!==sDrag.gid);
  src.segs.push({a:ua,b:ub,orig:'W',cur:'W',gid:null,moved:true,trip:null});
  src.segs.sort((x,y)=>x.a-y.a);
- // target: split around [ua,ub]; overlapped outer -> wait
+ // target: split around [ua,ub]; overlapped outer -> wait.
+ // If the incoming trip displaces a target ROUTE leg, that trip's LOAD is invalid
+ // (can't load a patient you didn't drive to) -> the whole broken unit -> Wait.
+ const broken=new Set();
+ tgt.segs.forEach(s=>{if(s.gid!=null&&s.cur==='R'&&s.b>ua&&s.a<ub)broken.add(s.gid);});
  const ns=[];
- tgt.segs.forEach(s=>{ if(s.b<=ua||s.a>=ub){ns.push(s);return;}
+ tgt.segs.forEach(s=>{ if(s.b<=ua||s.a>=ub){ if(s.gid!=null&&broken.has(s.gid))ns.push({a:s.a,b:s.b,orig:'W',cur:'W',gid:null,moved:true,trip:null}); else ns.push(s); return;}
   if(s.a<ua)ns.push({a:s.a,b:ua,orig:'W',cur:'W',gid:null,moved:true,trip:null});
   if(s.b>ub)ns.push({a:ub,b:s.b,orig:'W',cur:'W',gid:null,moved:true,trip:null});});
  const ng=sGid++;
