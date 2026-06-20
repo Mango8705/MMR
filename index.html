@@ -2,6 +2,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
 <title>My Medi Rides — Operations Dashboard</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
 :root{--ink:#1f2937;--mut:#6b7280;--line:#e5e7eb;--brand:#1f4e78;--cost:#e08a1e;--green:#0f7a3d;--red:#c0392b;--bg:#f7f8fa;}
 *{box-sizing:border-box}body{margin:0;font-family:'Segoe UI',Helvetica,Arial,sans-serif;color:var(--ink);background:var(--bg);}
@@ -113,7 +114,10 @@ table.sa td.cell.drag{opacity:.5}
 
 <div class="wrap" id="shift" style="display:none">
  <div class="controls"><div class="seg" id="sgrain"></div>
-   <button onclick="sReset()" style="margin-left:10px;background:#fff;border:1px solid #cbd5e1;border-radius:6px;padding:6px 12px;font-size:13px;font-weight:600;cursor:pointer">Reset day</button>
+   <button id="sundo" onclick="sUndo()" disabled style="margin-left:10px;background:#fff;border:1px solid #cbd5e1;border-radius:6px;padding:6px 11px;font-size:13px;font-weight:600;cursor:pointer">↶ Undo</button>
+   <button id="sredo" onclick="sRedo()" disabled style="margin-left:6px;background:#fff;border:1px solid #cbd5e1;border-radius:6px;padding:6px 11px;font-size:13px;font-weight:600;cursor:pointer">Redo ↷</button>
+   <button onclick="sReset()" style="margin-left:6px;background:#fff;border:1px solid #cbd5e1;border-radius:6px;padding:6px 12px;font-size:13px;font-weight:600;cursor:pointer">Reset day</button>
+   <button onclick="sExport()" style="margin-left:6px;background:#0f7a3d;border:1px solid #0f7a3d;color:#fff;border-radius:6px;padding:6px 12px;font-size:13px;font-weight:600;cursor:pointer">Export to Excel</button>
    <span class="note" id="sdaynet" style="margin-left:12px"></span></div>
  <div class="sa-leg">
    <span><i class="sa-sw sa-AL"></i>Loading (passenger)</span><span><i class="sa-sw sa-AR"></i>In route</span>
@@ -291,7 +295,7 @@ function bindSA(){const c=document.getElementById('stable');
   tr.ondrop=e=>{e.preventDefault();sDrop(+tr.dataset.di);};
  });
 }
-function sFlip(di,si){const d=sModel.drivers[di];const s=d.segs[si];
+function sFlip(di,si){const d=sModel.drivers[di];const s=d.segs[si];sPush();
  const grp=(s.gid!=null)?d.segs.filter(x=>x.gid===s.gid):[s];
  const ref=grp.filter(x=>x.cur==='L')[0]||grp[grp.length-1];
  let ph=(ref.cur===ref.orig)?0:(ref.cur==='O'?1:2); ph=(ph+1)%3;
@@ -304,6 +308,7 @@ function sDrop(diT){if(!sDrag)return;const src=sModel.drivers[sDrag.di];if(diT==
  const loc=driverLocAt(tgt,ua);
  if(loc&&trip){const mi=hav(loc.la,loc.lo,trip.pla,trip.plo);
   if(mi>5&&!confirm('The new driver is '+mi.toFixed(1)+' miles from the pickup at that time. Proceed with change?')){sDrag=null;return;}}
+ sPush();
  const moved=grp.map(s=>({a:s.a,b:s.b,k:s.cur,trip:s.trip}));
  // remove from source -> wait
  src.segs=src.segs.filter(s=>s.gid!==sDrag.gid);
@@ -319,9 +324,41 @@ function sDrop(diT){if(!sDrag)return;const src=sModel.drivers[sDrag.di];if(diT==
  ns.sort((x,y)=>x.a-y.a); tgt.segs=ns;
  sDrag=null; sRender();
 }
-function sReset(){sModel=sBuild(sDay);sRender();}
-function sSetDay(day){sDay=day;document.querySelectorAll('#sgrain button').forEach(b=>b.classList.toggle('active',b.dataset.d===day));sModel=sBuild(day);sRender();}
-function sInit(){const seg=document.getElementById('sgrain');seg.innerHTML=SHIFT.days.map((d,i)=>'<button data-d="'+d+'" class="'+(i===0?'active':'')+'" onclick="sSetDay(\''+d+'\')">'+d+'</button>').join('');sModel=sBuild(sDay);sRender();}
+let sUndoStack=[], sRedoStack=[];
+function sSnap(){return sModel.drivers.map(d=>JSON.parse(JSON.stringify(d.segs)));}
+function sRestore(snap){sModel.drivers.forEach((d,i)=>{if(snap[i])d.segs=snap[i];});}
+function sPush(){sUndoStack.push(sSnap());sRedoStack=[];sBtns();}
+function sUndo(){if(!sUndoStack.length)return;sRedoStack.push(sSnap());sRestore(sUndoStack.pop());sRender();sBtns();}
+function sRedo(){if(!sRedoStack.length)return;sUndoStack.push(sSnap());sRestore(sRedoStack.pop());sRender();sBtns();}
+function sBtns(){var u=document.getElementById('sundo'),r=document.getElementById('sredo');if(u)u.disabled=!sUndoStack.length;if(r)r.disabled=!sRedoStack.length;}
+function sClearHist(){sUndoStack=[];sRedoStack=[];sBtns();}
+function m2hm(m){var h=Math.floor(m/60)%24,mm=m%60;return (h<10?'0':'')+h+':'+(mm<10?'0':'')+mm;}
+function sExport(){
+ var sched=[['Driver','Van','Date','Start','End','Duration (min)','Activity','Pickup','Dropoff','Fare ($)','Miles','Level of service','Edited']];
+ var summ=[['Driver','Van','On-duty (h)','Loaded (h)','Route (h)','Wait (h)','Trips','Revenue ($)','Labor ($)','Fuel ($)','Insurance ($)','Net ($)']];
+ var TN={L:'Loaded (passenger)',R:'En route (deadhead)',W:'Wait / idle',O:'Off'};
+ var dayNet=0;
+ sModel.drivers.forEach(function(d){
+  var segs=d.segs.slice().sort(function(a,b){return a.a-b.a;});
+  var on=0,ld=0,rt=0,wt=0,trips=0;
+  segs.forEach(function(s){var dur=s.b-s.a;
+   sched.push([d.driver,'v'+d.van,sDay+'/2026',m2hm(s.a),m2hm(s.b),dur,TN[s.cur]||s.cur,
+     (s.cur==='L'&&s.trip)?s.trip.pu:'',(s.cur==='L'&&s.trip)?s.trip.do:'',
+     (s.cur==='L'&&s.trip)?s.trip.fare:'',(s.cur==='L'&&s.trip)?s.trip.mi:'',(s.cur==='L'&&s.trip)?s.trip.los:'',s.moved?'yes':'']);
+   if(s.cur!=='O'){on+=dur;if(s.cur==='L'){ld+=dur;if(s.trip)trips++;}else if(s.cur==='R')rt+=dur;else wt+=dur;}});
+  var n=sNet(d);dayNet+=n.net;
+  summ.push([d.driver,'v'+d.van,(on/60).toFixed(2),(ld/60).toFixed(2),(rt/60).toFixed(2),(wt/60).toFixed(2),trips,
+    n.rev.toFixed(2),n.lab.toFixed(2),n.fuel.toFixed(2),n.ins.toFixed(2),n.net.toFixed(2)]);
+ });
+ summ.push([]);summ.push(['DAY TOTAL','','','','','','','','','','',dayNet.toFixed(2)]);
+ var wb=XLSX.utils.book_new();
+ XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(summ),'Summary');
+ XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(sched),'Schedule');
+ XLSX.writeFile(wb,'MMR_Shift_Schedule_'+sDay.replace('/','-')+'.xlsx');
+}
+function sReset(){sModel=sBuild(sDay);sClearHist();sRender();}
+function sSetDay(day){sDay=day;document.querySelectorAll('#sgrain button').forEach(b=>b.classList.toggle('active',b.dataset.d===day));sModel=sBuild(day);sClearHist();sRender();}
+function sInit(){const seg=document.getElementById('sgrain');seg.innerHTML=SHIFT.days.map((d,i)=>'<button data-d="'+d+'" class="'+(i===0?'active':'')+'" onclick="sSetDay(\''+d+'\')">'+d+'</button>').join('');sModel=sBuild(sDay);sClearHist();sRender();}
 function showTab(t){['fin','ue','brk','prod','shift','map'].forEach(v=>document.getElementById(v).style.display=v===t?'':'none');document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('active',x.dataset.tab===t));if(t==='brk'&&!window._bi){window._bi=1;bSetGrain('total');}if(t==='ue'&&!window._ui){window._ui=1;ueSetGrain('total');}if(t==='prod'&&!window._pi){window._pi=1;pRender();}if(t==='shift'&&!window._si){window._si=1;sInit();}}
 function doRefresh(btn){var a=document.querySelector('.tab.active');a=a?a.dataset.tab:'fin';if(btn){btn.textContent='\u21bb Refreshing\u2026';}if(a==='map'){var f=document.querySelector('.mapframe');var b=f.src.split('?')[0];f.src=b+'?t='+Date.now();setTimeout(function(){if(btn)btn.textContent='\u21bb Refresh';},900);}else{location.href=location.pathname+'?t='+Date.now()+'#'+a;}}
 setGrain('total');
