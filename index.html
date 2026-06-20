@@ -112,7 +112,7 @@ function bCur(){const s=document.getElementById('bperiod');if(bGrain==='total')r
 function bRecRows(){const s=document.getElementById('bperiod');if(bGrain==='total')return REC;if(bGrain==='month')return REC.filter(r=>r.month===s.value);return REC.filter(r=>r.week===s.value);}
 function bMaps(){const dc={},dt={};bRecRows().forEach(r=>{dc[r.driver]=(dc[r.driver]||0)+r.pay+r.fuel+r.ins;dt[r.driver]=(dt[r.driver]||0)+r.trips;});return{dc,dt};}
 function bSortBy(k){if(bSortKey===k)bSortDir*=-1;else{bSortKey=k;bSortDir=1;}bRender();}
-function grp(rows,key,dc,dt){const m={};rows.forEach(r=>{const o=m[r[key]]=m[r[key]]||{k:r[key],rev:0,trips:0,ptrips:0,cost:0};o.rev+=r.rev;o.trips+=r.trips;o.ptrips+=(r.ptrips||0);const d=dt[r.driver]||0;if(d>0)o.cost+=(dc[r.driver]||0)*r.trips/d;});return Object.values(m).map(o=>({...o,delta:o.rev-o.cost,margin:o.rev?(o.rev-o.cost)/o.rev:0,rpt:o.ptrips?o.rev/o.ptrips:0}));}
+function grp(rows,key,dc,dt){const m={};rows.forEach(r=>{const o=m[r[key]]=m[r[key]]||{k:r[key],rev:0,trips:0,ptrips:0,cost:0,amb:0,wc:0};o.rev+=r.rev;o.trips+=r.trips;o.ptrips+=(r.ptrips||0);o.amb+=(r.los==='Ambulatory'?r.trips:0);o.wc+=(r.los==='Wheelchair'?r.trips:0);const d=dt[r.driver]||0;if(d>0)o.cost+=(dc[r.driver]||0)*r.trips/d;});return Object.values(m).map(o=>({...o,delta:o.rev-o.cost,margin:o.rev?(o.rev-o.cost)/o.rev:0,rpt:o.ptrips?o.rev/o.ptrips:0}));}
 function bRender(){const {dc,dt}=bMaps();let data=grp(bCur(),'broker',dc,dt);
  const trev=data.reduce((s,d)=>s+d.rev,0),tcost=data.reduce((s,d)=>s+d.cost,0);
  document.getElementById('bkpis').innerHTML=[['Revenue',fmt(trev)],['Total direct cost',fmt(tcost)]].map(([l,v])=>`<div class="kpi"><div class="l">${l}</div><div class="v">${v}</div></div>`).join('');
@@ -124,13 +124,14 @@ function bRender(){const {dc,dt}=bMaps();let data=grp(bCur(),'broker',dc,dt);
  const srt=[...data].sort((p,q)=>q.rev-p.rev);if(bchart)bchart.destroy();
  bchart=new Chart(document.getElementById('bchart'),{type:'bar',data:{labels:srt.map(d=>d.k),datasets:[{label:'Revenue',data:srt.map(d=>d.rev),backgroundColor:'#1f4e78'},{label:'Direct cost',data:srt.map(d=>d.cost),backgroundColor:'#e08a1e'}]},options:{responsive:true,plugins:{legend:{display:true}},scales:{y:{ticks:{callback:v=>'$'+(v/1000)+'k'}}}}});
  const bs=document.getElementById('bsel');const cur=bs.value;bs.innerHTML=ALLBROKERS.map(b=>`<option ${b===cur?'selected':''}>${b}</option>`).join('');bDetail();}
-function tbl(elId,keyLabel,rows){const head='<tr><th>'+keyLabel+'</th><th>Trips</th><th>Revenue</th><th>Direct cost</th><th>Rev − cost</th><th>Margin</th><th>Rev/Trip</th></tr>';
+function tbl(elId,keyLabel,rows,ext){const ec=ext?'<th>Amb trips</th><th>WC trips</th>':'';const head='<tr><th>'+keyLabel+'</th><th>Trips</th>'+ec+'<th>Revenue</th><th>Direct cost</th><th>Rev − cost</th><th>Margin</th><th>Rev/Trip</th></tr>';
  document.querySelector('#'+elId+' thead').innerHTML=head;
- document.querySelector('#'+elId+' tbody').innerHTML=rows.length?rows.map(x=>`<tr><td>${x.k}</td><td>${fmt1(x.trips)}</td><td>${fmt(x.rev)}</td><td>${fmt(x.cost)}</td><td class="${x.delta>=0?'pos':'neg'}">${fmtS(x.delta)}</td><td class="${x.delta>=0?'pos':'neg'}">${(x.margin*100).toFixed(0)}%</td><td>$${x.rpt.toFixed(2)}</td></tr>`).join(''):'<tr><td colspan="7" style="text-align:center;color:#9ca3af;padding:10px">No trips for this broker in the selected period.</td></tr>';}
+ const cspan=ext?9:7;
+ document.querySelector('#'+elId+' tbody').innerHTML=rows.length?rows.map(x=>`<tr><td>${x.k}</td><td>${fmt1(x.trips)}</td>${ext?`<td>${fmt1(x.amb)}</td><td>${fmt1(x.wc)}</td>`:''}<td>${fmt(x.rev)}</td><td>${fmt(x.cost)}</td><td class="${x.delta>=0?'pos':'neg'}">${fmtS(x.delta)}</td><td class="${x.delta>=0?'pos':'neg'}">${(x.margin*100).toFixed(0)}%</td><td>$${x.rpt.toFixed(2)}</td></tr>`).join(''):`<tr><td colspan="${cspan}" style="text-align:center;color:#9ca3af;padding:10px">No trips for this broker in the selected period.</td></tr>`;}
 function bDetail(){const bk=document.getElementById('bsel').value;const {dc,dt}=bMaps();const rows=bCur().filter(r=>r.broker===bk);
  const losOrder={'Ambulatory':0,'Wheelchair':1,'Bariatric Wheelchair':2,'Stretcher':3};
  let los=grp(rows,'los',dc,dt).sort((p,q)=>(losOrder[p.k]??9)-(losOrder[q.k]??9));tbl('bltable','Service',los);
- let drv=grp(rows,'driver',dc,dt).sort((p,q)=>q.delta-p.delta);tbl('bdtable','Driver',drv);}
+ let drv=grp(rows,'driver',dc,dt).sort((p,q)=>q.delta-p.delta);tbl('bdtable','Driver',drv,true);}
 /* UNIT ECONOMICS */
 let ueGrain='total',ueSortKey='ppt',ueSortDir=1,uechart=null;
 function uePeriods(){if(ueGrain==='week')return [...new Set(REC.map(r=>r.week))].sort();if(ueGrain==='month')return MONTHS.filter(m=>REC.some(r=>r.month===m));return ['ALL'];}
