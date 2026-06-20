@@ -66,12 +66,12 @@ table.dt tr:hover td{background:#fafbfc;}
  <div class="kpis" id="bkpis"></div>
  <div class="card"><h3>Revenue vs. direct cost by broker</h3><canvas id="bchart" height="90"></canvas></div>
  <div class="card"><h3>Per-broker profitability</h3><table class="dt" id="btable"><thead></thead><tbody></tbody></table>
-  <p class="note">Broker = payer on each trip. Direct cost is allocated from the Financials tab: each driver's pay+fuel+insurance split across the brokers they served, by trips. "Rev − cost" / Margin show profitability per broker; excludes overhead, so not net profit. Click any header to sort.</p></div>
+  <p class="note">Broker = payer on each trip. Direct cost is allocated from the Financials tab: each driver's pay+fuel+insurance split across the brokers they served, by trips. "Rev − cost" / Margin show profitability per broker; excludes overhead, so not net profit. Rev/Trip uses paid (fare-bearing) trips ($0 trips excluded); the Trips column is total trips. Click any header to sort.</p></div>
  <div class="card"><h3>Broker detail</h3>
   <select id="bsel" onchange="bDetail()" style="margin-bottom:6px"></select>
   <h4>Level of service</h4><table class="dt" id="bltable"><thead></thead><tbody></tbody></table>
   <h4>Drivers</h4><table class="dt" id="bdtable"><thead></thead><tbody></tbody></table>
-  <p class="note">For the selected broker: revenue, allocated cost, Rev − cost, margin and rev/trip — broken out by level of service (Ambulatory, Wheelchair, Bariatric Wheelchair, Stretcher) and by driver, for the selected period.</p></div>
+  <p class="note">For the selected broker: revenue, allocated cost, Rev − cost, margin and rev/trip — broken out by level of service (Ambulatory, Wheelchair, Bariatric Wheelchair, Stretcher) and by driver, for the selected period. Rev/Trip uses paid (fare-bearing) trips; Trips is total trips.</p></div>
 </div>
 
 <div class="wrap" id="map" style="display:none">
@@ -111,7 +111,7 @@ function bCur(){const s=document.getElementById('bperiod');if(bGrain==='total')r
 function bRecRows(){const s=document.getElementById('bperiod');if(bGrain==='total')return REC;if(bGrain==='month')return REC.filter(r=>r.month===s.value);return REC.filter(r=>r.week===s.value);}
 function bMaps(){const dc={},dt={};bRecRows().forEach(r=>{dc[r.driver]=(dc[r.driver]||0)+r.pay+r.fuel+r.ins;dt[r.driver]=(dt[r.driver]||0)+r.trips;});return{dc,dt};}
 function bSortBy(k){if(bSortKey===k)bSortDir*=-1;else{bSortKey=k;bSortDir=1;}bRender();}
-function grp(rows,key,dc,dt){const m={};rows.forEach(r=>{const o=m[r[key]]=m[r[key]]||{k:r[key],rev:0,trips:0,cost:0};o.rev+=r.rev;o.trips+=r.trips;const d=dt[r.driver]||0;if(d>0)o.cost+=(dc[r.driver]||0)*r.trips/d;});return Object.values(m).map(o=>({...o,delta:o.rev-o.cost,margin:o.rev?(o.rev-o.cost)/o.rev:0,rpt:o.trips?o.rev/o.trips:0}));}
+function grp(rows,key,dc,dt){const m={};rows.forEach(r=>{const o=m[r[key]]=m[r[key]]||{k:r[key],rev:0,trips:0,ptrips:0,cost:0};o.rev+=r.rev;o.trips+=r.trips;o.ptrips+=(r.ptrips||0);const d=dt[r.driver]||0;if(d>0)o.cost+=(dc[r.driver]||0)*r.trips/d;});return Object.values(m).map(o=>({...o,delta:o.rev-o.cost,margin:o.rev?(o.rev-o.cost)/o.rev:0,rpt:o.ptrips?o.rev/o.ptrips:0}));}
 function bRender(){const {dc,dt}=bMaps();let data=grp(bCur(),'broker',dc,dt);
  const trev=data.reduce((s,d)=>s+d.rev,0),tcost=data.reduce((s,d)=>s+d.cost,0);
  document.getElementById('bkpis').innerHTML=[['Revenue',fmt(trev)],['Total direct cost',fmt(tcost)]].map(([l,v])=>`<div class="kpi"><div class="l">${l}</div><div class="v">${v}</div></div>`).join('');
