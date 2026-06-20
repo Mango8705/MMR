@@ -3,7 +3,7 @@
 <title>My Medi Rides — Operations Dashboard</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <style>
-:root{--ink:#1f2937;--mut:#6b7280;--line:#e5e7eb;--brand:#1f4e78;--cost:#e08a1e;--bg:#f7f8fa;}
+:root{--ink:#1f2937;--mut:#6b7280;--line:#e5e7eb;--brand:#1f4e78;--cost:#e08a1e;--green:#0f7a3d;--red:#c0392b;--bg:#f7f8fa;}
 *{box-sizing:border-box}
 body{margin:0;font-family:'Segoe UI',Helvetica,Arial,sans-serif;color:var(--ink);background:var(--bg);}
 header{background:var(--brand);color:#fff;padding:14px 22px;}
@@ -30,6 +30,7 @@ table.dt th{font-size:10.5px;text-transform:uppercase;color:var(--mut);border-bo
 table.dt td:first-child,table.dt th:first-child{text-align:left;}
 table.dt tr:hover td{background:#fafbfc;}
 .muted{color:var(--mut);font-size:12px;}
+.pos{color:var(--green);font-weight:700;} .neg{color:var(--red);font-weight:700;}
 .mapframe{width:100%;height:78vh;border:1px solid var(--line);border-radius:10px;background:#eef3f1;}
 .note{font-size:11.5px;color:#9ca3af;margin-top:12px;line-height:1.5;}
 @media(max-width:720px){.kpis{grid-template-columns:repeat(2,1fr)}}
@@ -51,7 +52,7 @@ table.dt tr:hover td{background:#fafbfc;}
  <div class="card"><h3 id="charttitle">Revenue vs. direct cost</h3><canvas id="chart" height="92"></canvas></div>
  <div class="card"><h3 id="tabletitle">Per-driver breakdown</h3>
   <table class="dt" id="dtable"><thead></thead><tbody></tbody></table>
-  <p class="note">Direct cost = Pay (payroll Driver Totals) + Fuel (fleet card) + Insurance ($9,100/mo premium at $350/operating-day, allocated to drivers on the road). Does not include overhead (office payroll, vehicle financing, software, fees, etc.), so revenue minus direct cost is not net profit. Revenue from trip reports. Drivers shown by first name. Click a column header to sort.</p>
+  <p class="note">Direct cost = Pay (payroll Driver Totals) + Fuel (fleet card) + Insurance ($9,100/mo premium at $350/operating-day, allocated to drivers on the road). Does not include overhead (office payroll, vehicle financing, software, fees, etc.), so revenue minus direct cost is not net profit. Revenue is shown in green when it covers the driver's direct cost, red when it does not. Revenue from trip reports. Drivers shown by first name. Click a column header to sort.</p>
  </div>
 </div>
 
@@ -73,7 +74,7 @@ function setGrain(g){grain=g;document.querySelectorAll('#grain button').forEach(
 function curRows(){const sel=document.getElementById('period');if(grain==='total')return REC;if(grain==='month')return REC.filter(r=>r.month===sel.value);return REC.filter(r=>r.week===sel.value);}
 function kpiHTML(a){return [['Revenue',fmt(a.rev)],['Total direct cost',fmt(a.cost)]].map(([l,v])=>`<div class="kpi"><div class="l">${l}</div><div class="v">${v}</div></div>`).join('');}
 let sortKey='rev',sortDir=-1;
-function drawTable(rows){const by={};rows.forEach(r=>{(by[r.driver]=by[r.driver]||[]).push(r);});let data=Object.entries(by).map(([d,rs])=>{const a=agg(rs);return {driver:d,...a};});data.sort((x,y)=>(x[sortKey]<y[sortKey]?1:-1)*sortDir);const cols=[['driver','Driver'],['trips','Trips'],['days','Days'],['pay','Pay'],['fuel','Fuel'],['ins','Insurance'],['cost','Direct cost'],['rev','Revenue']];document.querySelector('#dtable thead').innerHTML='<tr>'+cols.map(([k,l])=>`<th onclick="sortBy('${k}')">${l}</th>`).join('')+'</tr>';document.querySelector('#dtable tbody').innerHTML=data.map(r=>`<tr><td>${r.driver}</td><td>${fmt1(r.trips)}</td><td>${fmt1(r.days)}</td><td>${fmt(r.pay)}</td><td>${fmt(r.fuel)}</td><td>${fmt(r.ins)}</td><td>${fmt(r.cost)}</td><td>${fmt(r.rev)}</td></tr>`).join('');}
+function drawTable(rows){const by={};rows.forEach(r=>{(by[r.driver]=by[r.driver]||[]).push(r);});let data=Object.entries(by).map(([d,rs])=>{const a=agg(rs);return {driver:d,...a};});data.sort((x,y)=>(x[sortKey]<y[sortKey]?1:-1)*sortDir);const cols=[['driver','Driver'],['trips','Trips'],['days','Days'],['pay','Pay'],['fuel','Fuel'],['ins','Insurance'],['cost','Direct cost'],['rev','Revenue']];document.querySelector('#dtable thead').innerHTML='<tr>'+cols.map(([k,l])=>`<th onclick="sortBy('${k}')">${l}</th>`).join('')+'</tr>';document.querySelector('#dtable tbody').innerHTML=data.map(r=>`<tr><td>${r.driver}</td><td>${fmt1(r.trips)}</td><td>${fmt1(r.days)}</td><td>${fmt(r.pay)}</td><td>${fmt(r.fuel)}</td><td>${fmt(r.ins)}</td><td>${fmt(r.cost)}</td><td class="${r.rev>=r.cost?'pos':'neg'}">${fmt(r.rev)}</td></tr>`).join('');}
 function sortBy(k){if(sortKey===k)sortDir*=-1;else{sortKey=k;sortDir=-1;}render();}
 function trend(){const ps=grain==='week'?[...new Set(REC.map(r=>r.week))].sort():MONTHS.filter(m=>REC.some(r=>r.month===m));const lab=ps.map(p=>grain==='week'?weekLabel(p):p);const f=grain==='week'?(p=>REC.filter(r=>r.week===p)):(p=>REC.filter(r=>r.month===p));return {lab,rev:ps.map(p=>agg(f(p)).rev),cost:ps.map(p=>agg(f(p)).cost)};}
 function render(){const a=agg(curRows());document.getElementById('kpis').innerHTML=kpiHTML(a);
