@@ -7,18 +7,20 @@
   html,body{margin:0;height:100%;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#1f2937;}
   #wrap{display:flex;height:100vh;}
   #map{flex:1;height:100%;}
-  #side{width:420px;display:flex;flex-direction:column;border-left:1px solid #e5e7eb;background:#fafafa;}
+  #side{width:440px;display:flex;flex-direction:column;border-left:1px solid #e5e7eb;background:#fafafa;}
   #sidehead{padding:14px 16px 6px;}
-  #sidetbl{overflow-y:auto;padding:0 16px 16px;}
+  #sidetbl{overflow:auto;padding:0 16px 16px;}
   h1{font-size:16px;margin:0 0 4px;}
   .sub{font-size:12px;color:#6b7280;margin:0 0 8px;}
   #modes{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0 8px;}
   .mbtn{border:1px solid #cbd5e1;background:#fff;color:#475569;font-size:12px;font-weight:600;padding:6px 10px;border-radius:7px;cursor:pointer;}
   .mbtn.active{background:#238b45;border-color:#238b45;color:#fff;}
+  .mbtn.active[data-m="profit"]{background:#1f4e78;border-color:#1f4e78;}
   table{width:100%;border-collapse:collapse;font-size:12.5px;}
   thead th{position:sticky;top:0;background:#fafafa;color:#6b7280;font-weight:600;font-size:10.5px;text-transform:uppercase;text-align:left;padding:6px 5px;border-bottom:1px solid #e5e7eb;z-index:1;}
   td{padding:5px;border-bottom:1px solid #eee;text-align:left;}
   td.n{text-align:right;font-variant-numeric:tabular-nums;}
+  .pos{color:#0b6b33;font-weight:700;} .neg{color:#b91c1c;font-weight:700;}
   tr.row{cursor:pointer;} tr.row:hover{background:#eaf6ed;}
   tr.row.active{background:#d4eedd;outline:2px solid #238b45;}
   .ziplink{color:#0b6b33;}
@@ -28,9 +30,8 @@
   .legend i{width:14px;height:14px;float:left;margin-right:6px;opacity:.9;}
   .swatch{display:inline-block;width:11px;height:11px;border-radius:2px;margin-right:6px;vertical-align:middle;border:1px solid rgba(0,0,0,.15);}
   .leaflet-tooltip.z{font-size:12px;line-height:1.4;}
-  .zipcode{font-size:10.5px;font-weight:700;color:#173d28;text-align:center;white-space:nowrap;
-           text-shadow:0 0 2px #fff,0 0 2px #fff,0 0 3px #fff,0 0 3px #fff;pointer-events:none;}
-  @media (max-width:760px){#wrap{flex-direction:column;height:auto;}#map{flex:none;width:100%;height:62vh;min-height:340px;}#side{width:100%;border-left:none;border-top:1px solid #e5e7eb;}#sidetbl{overflow-y:visible;}}
+  .zipcode{font-size:10.5px;font-weight:700;color:#173d28;text-align:center;white-space:nowrap;text-shadow:0 0 2px #fff,0 0 2px #fff,0 0 3px #fff,0 0 3px #fff;pointer-events:none;}
+  @media (max-width:760px){#wrap{flex-direction:column;height:auto;}#map{flex:none;width:100%;height:62vh;min-height:340px;}#side{width:100%;border-left:none;border-top:1px solid #e5e7eb;}#sidetbl{overflow:visible;}}
 </style></head><body>
 <div id="wrap">
   <div id="map"></div>
@@ -43,65 +44,72 @@
         <button class="mbtn" data-m="amb" onclick="setMetric('amb')">Ambulatory</button>
         <button class="mbtn" data-m="wc" onclick="setMetric('wc')">Wheelchair</button>
         <button class="mbtn" data-m="bwc" onclick="setMetric('bwc')">Bariatric WC</button>
+        <button class="mbtn" data-m="profit" onclick="setMetric('profit')">Profitability</button>
       </div>
       <div id="status">Loading zip-code boundaries…</div>
-      <p class="hint" id="hint">Darker green = more. Toggle a mode above to shade by level of service. Hover a zip or click a row for details.</p>
+      <p class="hint" id="hint">Darker green = more. Toggle a mode above. Hover a zip or click a row for details.</p>
     </div>
     <div id="sidetbl"><table id="tbl"><thead></thead><tbody></tbody></table></div>
   </div>
 </div>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-const DATA = {"33705":{"n":309,"rev":9999.71,"days":76,"revday":131.58,"amb":128,"wc":154,"bwc":10,"str":17},"34689":{"n":242,"rev":8795.47,"days":68,"revday":129.35,"amb":29,"wc":200,"bwc":1,"str":12},"33756":{"n":228,"rev":7644.01,"days":75,"revday":101.92,"amb":89,"wc":124,"bwc":4,"str":11},"34698":{"n":213,"rev":8692.42,"days":76,"revday":114.37,"amb":56,"wc":121,"bwc":0,"str":36},"33711":{"n":193,"rev":7011.61,"days":74,"revday":94.75,"amb":43,"wc":125,"bwc":7,"str":18},"33782":{"n":179,"rev":5461.56,"days":77,"revday":70.93,"amb":125,"wc":46,"bwc":8,"str":0},"33763":{"n":146,"rev":2377.35,"days":64,"revday":37.15,"amb":139,"wc":7,"bwc":0,"str":0},"33714":{"n":142,"rev":4720.37,"days":70,"revday":67.43,"amb":56,"wc":56,"bwc":29,"str":1},"33761":{"n":138,"rev":3393.12,"days":69,"revday":49.18,"amb":87,"wc":46,"bwc":3,"str":2},"33701":{"n":122,"rev":4375.73,"days":69,"revday":63.42,"amb":20,"wc":82,"bwc":20,"str":0},"33774":{"n":111,"rev":2587.52,"days":62,"revday":41.73,"amb":66,"wc":42,"bwc":2,"str":1},"34684":{"n":109,"rev":3664.6,"days":49,"revday":74.79,"amb":19,"wc":84,"bwc":3,"str":3},"33771":{"n":102,"rev":3347.37,"days":59,"revday":56.74,"amb":24,"wc":74,"bwc":2,"str":2},"33781":{"n":97,"rev":3370.21,"days":49,"revday":68.78,"amb":11,"wc":67,"bwc":10,"str":9},"33755":{"n":96,"rev":3171.89,"days":67,"revday":47.34,"amb":71,"wc":24,"bwc":1,"str":0},"33712":{"n":95,"rev":3021.44,"days":57,"revday":53.01,"amb":7,"wc":85,"bwc":3,"str":0},"33759":{"n":85,"rev":3114.17,"days":69,"revday":45.13,"amb":21,"wc":56,"bwc":0,"str":8},"33709":{"n":83,"rev":2428.88,"days":47,"revday":51.68,"amb":29,"wc":44,"bwc":10,"str":0},"33707":{"n":82,"rev":2782.07,"days":52,"revday":53.5,"amb":12,"wc":69,"bwc":1,"str":0},"33773":{"n":79,"rev":3091.62,"days":62,"revday":49.86,"amb":6,"wc":73,"bwc":0,"str":0},"33702":{"n":79,"rev":3927.36,"days":48,"revday":81.82,"amb":39,"wc":14,"bwc":2,"str":24},"33710":{"n":79,"rev":2718.37,"days":42,"revday":64.72,"amb":19,"wc":48,"bwc":12,"str":0},"33770":{"n":79,"rev":2497.11,"days":48,"revday":52.02,"amb":49,"wc":28,"bwc":1,"str":1},"33765":{"n":65,"rev":2429.17,"days":43,"revday":56.49,"amb":9,"wc":55,"bwc":1,"str":0},"33777":{"n":63,"rev":2410.07,"days":39,"revday":61.8,"amb":3,"wc":57,"bwc":1,"str":2},"33713":{"n":59,"rev":1858.54,"days":38,"revday":48.91,"amb":21,"wc":25,"bwc":13,"str":0},"33778":{"n":57,"rev":1527.97,"days":39,"revday":39.18,"amb":14,"wc":42,"bwc":1,"str":0},"33760":{"n":43,"rev":1248.82,"days":35,"revday":35.68,"amb":24,"wc":16,"bwc":3,"str":0},"33772":{"n":42,"rev":1416.37,"days":36,"revday":39.34,"amb":8,"wc":33,"bwc":1,"str":0},"34683":{"n":41,"rev":995.13,"days":34,"revday":29.27,"amb":22,"wc":19,"bwc":0,"str":0},"33764":{"n":38,"rev":1227.12,"days":29,"revday":42.31,"amb":12,"wc":26,"bwc":0,"str":0},"34695":{"n":34,"rev":1157.59,"days":27,"revday":42.87,"amb":7,"wc":27,"bwc":0,"str":0},"34653":{"n":21,"rev":1165.79,"days":15,"revday":77.72,"amb":2,"wc":18,"bwc":0,"str":1},"33716":{"n":20,"rev":710.46,"days":18,"revday":39.47,"amb":4,"wc":15,"bwc":1,"str":0},"33704":{"n":18,"rev":546.45,"days":15,"revday":36.43,"amb":15,"wc":3,"bwc":0,"str":0},"34685":{"n":17,"rev":575.13,"days":14,"revday":41.08,"amb":6,"wc":10,"bwc":0,"str":1},"34655":{"n":13,"rev":727.07,"days":11,"revday":66.1,"amb":0,"wc":11,"bwc":0,"str":2},"95709":{"n":8,"rev":454.88,"days":8,"revday":56.86,"amb":0,"wc":6,"bwc":0,"str":2},"34652":{"n":8,"rev":273.25,"days":8,"revday":34.16,"amb":3,"wc":5,"bwc":0,"str":0},"33762":{"n":8,"rev":277.68,"days":8,"revday":34.71,"amb":1,"wc":7,"bwc":0,"str":0},"33776":{"n":8,"rev":247.02,"days":8,"revday":30.88,"amb":3,"wc":5,"bwc":0,"str":0},"33744":{"n":7,"rev":306.28,"days":7,"revday":43.75,"amb":0,"wc":6,"bwc":0,"str":1},"33703":{"n":6,"rev":110.4,"days":6,"revday":18.4,"amb":5,"wc":1,"bwc":0,"str":0},"34677":{"n":6,"rev":180.86,"days":6,"revday":30.14,"amb":3,"wc":2,"bwc":1,"str":0},"34668":{"n":3,"rev":157.92,"days":3,"revday":52.64,"amb":0,"wc":3,"bwc":0,"str":0},"33609":{"n":3,"rev":226.03,"days":3,"revday":75.34,"amb":0,"wc":2,"bwc":1,"str":0},"34691":{"n":3,"rev":100.2,"days":3,"revday":33.4,"amb":0,"wc":3,"bwc":0,"str":0},"33625":{"n":3,"rev":190.0,"days":3,"revday":63.33,"amb":0,"wc":2,"bwc":0,"str":1},"33602":{"n":3,"rev":183.64,"days":3,"revday":61.21,"amb":0,"wc":3,"bwc":0,"str":0},"33715":{"n":2,"rev":99.28,"days":2,"revday":49.64,"amb":1,"wc":1,"bwc":0,"str":0},"33606":{"n":2,"rev":104.73,"days":2,"revday":52.37,"amb":0,"wc":2,"bwc":0,"str":0},"34654":{"n":2,"rev":84.18,"days":2,"revday":42.09,"amb":1,"wc":1,"bwc":0,"str":0},"33708":{"n":2,"rev":49.2,"days":2,"revday":24.6,"amb":0,"wc":2,"bwc":0,"str":0},"33607":{"n":2,"rev":96.12,"days":2,"revday":48.06,"amb":0,"wc":2,"bwc":0,"str":0},"33626":{"n":1,"rev":20.62,"days":1,"revday":20.62,"amb":1,"wc":0,"bwc":0,"str":0},"33556":{"n":1,"rev":38.36,"days":1,"revday":38.36,"amb":0,"wc":1,"bwc":0,"str":0},"33610":{"n":1,"rev":60.13,"days":1,"revday":60.13,"amb":0,"wc":1,"bwc":0,"str":0},"33541":{"n":1,"rev":106.09,"days":1,"revday":106.09,"amb":0,"wc":1,"bwc":0,"str":0},"34690":{"n":1,"rev":59.13,"days":1,"revday":59.13,"amb":0,"wc":1,"bwc":0,"str":0},"33618":{"n":1,"rev":28.33,"days":1,"revday":28.33,"amb":1,"wc":0,"bwc":0,"str":0},"34688":{"n":1,"rev":15.75,"days":1,"revday":15.75,"amb":1,"wc":0,"bwc":0,"str":0},"34667":{"n":1,"rev":95.82,"days":1,"revday":95.82,"amb":0,"wc":0,"bwc":0,"str":1},"33615":{"n":1,"rev":64.96,"days":1,"revday":64.96,"amb":0,"wc":1,"bwc":0,"str":0},"33635":{"n":1,"rev":56.46,"days":1,"revday":56.46,"amb":1,"wc":0,"bwc":0,"str":0},"33612":{"n":1,"rev":76.45,"days":1,"revday":76.45,"amb":0,"wc":1,"bwc":0,"str":0}};
-const MODES={n:'Trips',amb:'Ambulatory',wc:'Wheelchair',bwc:'Bariatric WC'};
+const DATA = {"33705":{"n":309,"rev":9999.71,"days":76,"revday":131.58,"amb":128,"wc":154,"bwc":10,"str":17,"cost":8497.31,"profit":1502.4},"34689":{"n":242,"rev":8795.47,"days":68,"revday":129.35,"amb":29,"wc":200,"bwc":1,"str":12,"cost":7347.31,"profit":1448.16},"33756":{"n":228,"rev":7644.01,"days":75,"revday":101.92,"amb":89,"wc":124,"bwc":4,"str":11,"cost":7365.36,"profit":278.65},"34698":{"n":213,"rev":8692.42,"days":76,"revday":114.37,"amb":56,"wc":121,"bwc":0,"str":36,"cost":6808.78,"profit":1883.64},"33711":{"n":193,"rev":7011.61,"days":74,"revday":94.75,"amb":43,"wc":125,"bwc":7,"str":18,"cost":5641.78,"profit":1369.83},"33782":{"n":179,"rev":5461.56,"days":77,"revday":70.93,"amb":125,"wc":46,"bwc":8,"str":0,"cost":5228.37,"profit":233.19},"33763":{"n":146,"rev":2377.35,"days":64,"revday":37.15,"amb":139,"wc":7,"bwc":0,"str":0,"cost":4197.56,"profit":-1820.21},"33714":{"n":142,"rev":4720.37,"days":70,"revday":67.43,"amb":56,"wc":56,"bwc":29,"str":1,"cost":4100.74,"profit":619.63},"33761":{"n":138,"rev":3393.12,"days":69,"revday":49.18,"amb":87,"wc":46,"bwc":3,"str":2,"cost":3978.49,"profit":-585.37},"33701":{"n":122,"rev":4375.73,"days":69,"revday":63.42,"amb":20,"wc":82,"bwc":20,"str":0,"cost":3412.35,"profit":963.38},"33774":{"n":111,"rev":2587.52,"days":62,"revday":41.73,"amb":66,"wc":42,"bwc":2,"str":1,"cost":3322.08,"profit":-734.56},"34684":{"n":109,"rev":3664.6,"days":49,"revday":74.79,"amb":19,"wc":84,"bwc":3,"str":3,"cost":3394.2,"profit":270.4},"33771":{"n":102,"rev":3347.37,"days":59,"revday":56.74,"amb":24,"wc":74,"bwc":2,"str":2,"cost":3100.1,"profit":247.27},"33781":{"n":97,"rev":3370.21,"days":49,"revday":68.78,"amb":11,"wc":67,"bwc":10,"str":9,"cost":2858.21,"profit":512.0},"33755":{"n":96,"rev":3171.89,"days":67,"revday":47.34,"amb":71,"wc":24,"bwc":1,"str":0,"cost":2427.51,"profit":744.38},"33712":{"n":95,"rev":3021.44,"days":57,"revday":53.01,"amb":7,"wc":85,"bwc":3,"str":0,"cost":2472.79,"profit":548.65},"33759":{"n":85,"rev":3114.17,"days":69,"revday":45.13,"amb":21,"wc":56,"bwc":0,"str":8,"cost":2541.13,"profit":573.04},"33709":{"n":83,"rev":2428.88,"days":47,"revday":51.68,"amb":29,"wc":44,"bwc":10,"str":0,"cost":2292.56,"profit":136.32},"33707":{"n":82,"rev":2782.07,"days":52,"revday":53.5,"amb":12,"wc":69,"bwc":1,"str":0,"cost":2237.21,"profit":544.86},"33773":{"n":79,"rev":3091.62,"days":62,"revday":49.86,"amb":6,"wc":73,"bwc":0,"str":0,"cost":2097.68,"profit":993.94},"33702":{"n":79,"rev":3927.36,"days":48,"revday":81.82,"amb":39,"wc":14,"bwc":2,"str":24,"cost":2622.7,"profit":1304.66},"33710":{"n":79,"rev":2718.37,"days":42,"revday":64.72,"amb":19,"wc":48,"bwc":12,"str":0,"cost":2282.1,"profit":436.27},"33770":{"n":79,"rev":2497.11,"days":48,"revday":52.02,"amb":49,"wc":28,"bwc":1,"str":1,"cost":2101.28,"profit":395.83},"33765":{"n":65,"rev":2429.17,"days":43,"revday":56.49,"amb":9,"wc":55,"bwc":1,"str":0,"cost":1900.55,"profit":528.62},"33777":{"n":63,"rev":2410.07,"days":39,"revday":61.8,"amb":3,"wc":57,"bwc":1,"str":2,"cost":1926.07,"profit":484.0},"33713":{"n":59,"rev":1858.54,"days":38,"revday":48.91,"amb":21,"wc":25,"bwc":13,"str":0,"cost":1595.85,"profit":262.69},"33778":{"n":57,"rev":1527.97,"days":39,"revday":39.18,"amb":14,"wc":42,"bwc":1,"str":0,"cost":1798.82,"profit":-270.85},"33760":{"n":43,"rev":1248.82,"days":35,"revday":35.68,"amb":24,"wc":16,"bwc":3,"str":0,"cost":1385.6,"profit":-136.78},"33772":{"n":42,"rev":1416.37,"days":36,"revday":39.34,"amb":8,"wc":33,"bwc":1,"str":0,"cost":1165.03,"profit":251.34},"34683":{"n":41,"rev":995.13,"days":34,"revday":29.27,"amb":22,"wc":19,"bwc":0,"str":0,"cost":1165.24,"profit":-170.11},"33764":{"n":38,"rev":1227.12,"days":29,"revday":42.31,"amb":12,"wc":26,"bwc":0,"str":0,"cost":1116.08,"profit":111.04},"34695":{"n":34,"rev":1157.59,"days":27,"revday":42.87,"amb":7,"wc":27,"bwc":0,"str":0,"cost":1039.17,"profit":118.42},"34653":{"n":21,"rev":1165.79,"days":15,"revday":77.72,"amb":2,"wc":18,"bwc":0,"str":1,"cost":677.32,"profit":488.47},"33716":{"n":20,"rev":710.46,"days":18,"revday":39.47,"amb":4,"wc":15,"bwc":1,"str":0,"cost":559.52,"profit":150.94},"33704":{"n":18,"rev":546.45,"days":15,"revday":36.43,"amb":15,"wc":3,"bwc":0,"str":0,"cost":456.53,"profit":89.92},"34685":{"n":17,"rev":575.13,"days":14,"revday":41.08,"amb":6,"wc":10,"bwc":0,"str":1,"cost":546.91,"profit":28.22},"34655":{"n":13,"rev":727.07,"days":11,"revday":66.1,"amb":0,"wc":11,"bwc":0,"str":2,"cost":382.4,"profit":344.67},"95709":{"n":8,"rev":454.88,"days":8,"revday":56.86,"amb":0,"wc":6,"bwc":0,"str":2,"cost":254.15,"profit":200.73},"34652":{"n":8,"rev":273.25,"days":8,"revday":34.16,"amb":3,"wc":5,"bwc":0,"str":0,"cost":246.07,"profit":27.18},"33762":{"n":8,"rev":277.68,"days":8,"revday":34.71,"amb":1,"wc":7,"bwc":0,"str":0,"cost":222.1,"profit":55.58},"33776":{"n":8,"rev":247.02,"days":8,"revday":30.88,"amb":3,"wc":5,"bwc":0,"str":0,"cost":247.07,"profit":-0.05},"33744":{"n":7,"rev":306.28,"days":7,"revday":43.75,"amb":0,"wc":6,"bwc":0,"str":1,"cost":205.56,"profit":100.72},"33703":{"n":6,"rev":110.4,"days":6,"revday":18.4,"amb":5,"wc":1,"bwc":0,"str":0,"cost":149.55,"profit":-39.15},"34677":{"n":6,"rev":180.86,"days":6,"revday":30.14,"amb":3,"wc":2,"bwc":1,"str":0,"cost":152.27,"profit":28.59},"34668":{"n":3,"rev":157.92,"days":3,"revday":52.64,"amb":0,"wc":3,"bwc":0,"str":0,"cost":81.98,"profit":75.94},"33609":{"n":3,"rev":226.03,"days":3,"revday":75.34,"amb":0,"wc":2,"bwc":1,"str":0,"cost":117.53,"profit":108.5},"34691":{"n":3,"rev":100.2,"days":3,"revday":33.4,"amb":0,"wc":3,"bwc":0,"str":0,"cost":82.25,"profit":17.95},"33625":{"n":3,"rev":190.0,"days":3,"revday":63.33,"amb":0,"wc":2,"bwc":0,"str":1,"cost":94.81,"profit":95.19},"33602":{"n":3,"rev":183.64,"days":3,"revday":61.21,"amb":0,"wc":3,"bwc":0,"str":0,"cost":103.1,"profit":80.54},"33715":{"n":2,"rev":99.28,"days":2,"revday":49.64,"amb":1,"wc":1,"bwc":0,"str":0,"cost":47.85,"profit":51.43},"33606":{"n":2,"rev":104.73,"days":2,"revday":52.37,"amb":0,"wc":2,"bwc":0,"str":0,"cost":81.65,"profit":23.08},"34654":{"n":2,"rev":84.18,"days":2,"revday":42.09,"amb":1,"wc":1,"bwc":0,"str":0,"cost":61.72,"profit":22.46},"33708":{"n":2,"rev":49.2,"days":2,"revday":24.6,"amb":0,"wc":2,"bwc":0,"str":0,"cost":46.15,"profit":3.05},"33607":{"n":2,"rev":96.12,"days":2,"revday":48.06,"amb":0,"wc":2,"bwc":0,"str":0,"cost":74.0,"profit":22.12},"33626":{"n":1,"rev":20.62,"days":1,"revday":20.62,"amb":1,"wc":0,"bwc":0,"str":0,"cost":25.02,"profit":-4.4},"33556":{"n":1,"rev":38.36,"days":1,"revday":38.36,"amb":0,"wc":1,"bwc":0,"str":0,"cost":26.46,"profit":11.9},"33610":{"n":1,"rev":60.13,"days":1,"revday":60.13,"amb":0,"wc":1,"bwc":0,"str":0,"cost":22.23,"profit":37.9},"33541":{"n":1,"rev":106.09,"days":1,"revday":106.09,"amb":0,"wc":1,"bwc":0,"str":0,"cost":48.98,"profit":57.11},"34690":{"n":1,"rev":59.13,"days":1,"revday":59.13,"amb":0,"wc":1,"bwc":0,"str":0,"cost":29.34,"profit":29.79},"33618":{"n":1,"rev":28.33,"days":1,"revday":28.33,"amb":1,"wc":0,"bwc":0,"str":0,"cost":48.98,"profit":-20.65},"34688":{"n":1,"rev":15.75,"days":1,"revday":15.75,"amb":1,"wc":0,"bwc":0,"str":0,"cost":29.34,"profit":-13.59},"34667":{"n":1,"rev":95.82,"days":1,"revday":95.82,"amb":0,"wc":0,"bwc":0,"str":1,"cost":26.46,"profit":69.36},"33615":{"n":1,"rev":64.96,"days":1,"revday":64.96,"amb":0,"wc":1,"bwc":0,"str":0,"cost":29.34,"profit":35.62},"33635":{"n":1,"rev":56.46,"days":1,"revday":56.46,"amb":1,"wc":0,"bwc":0,"str":0,"cost":32.66,"profit":23.8},"33612":{"n":1,"rev":76.45,"days":1,"revday":76.45,"amb":0,"wc":1,"bwc":0,"str":0,"cost":34.39,"profit":42.06}};
+const MODES={n:'Trips',amb:'Ambulatory',wc:'Wheelchair',bwc:'Bariatric WC',profit:'Profit'};
 let metric='n';
-const val=z=>DATA[z][metric]||0;
-let curMax=Math.max(1,...Object.keys(DATA).map(val));
+const val=z=>metric==='profit'?DATA[z].profit:(DATA[z][metric]||0);
+let curMax=Math.max(1,...Object.keys(DATA).map(val)), curMaxAbs=1;
 const GREENS=["#e5f5e0","#c7e9c0","#a1d99b","#74c476","#41ab5d","#238b45","#005a32"];
-function greenFor(v){ if(v<=0) return null; const t=v/curMax;
-  if(t>0.85)return GREENS[6]; if(t>0.60)return GREENS[5]; if(t>0.40)return GREENS[4];
-  if(t>0.25)return GREENS[3]; if(t>0.12)return GREENS[2]; if(t>0.05)return GREENS[1]; return GREENS[0]; }
+const REDS=["#fee0d2","#fcbba1","#fc9272","#fb6a4a","#ef3b2c","#cb181d","#99000d"];
+function bucket(t){if(t>0.85)return 6;if(t>0.60)return 5;if(t>0.40)return 4;if(t>0.25)return 3;if(t>0.12)return 2;if(t>0.05)return 1;return 0;}
+function shade(z){ if(metric==='profit'){const p=DATA[z].profit;const t=Math.abs(p)/curMaxAbs;return (p>=0?GREENS:REDS)[bucket(t)];}
+  const v=val(z); if(v<=0)return null; return GREENS[bucket(v/curMax)]; }
 const usd=v=>'$'+Math.round(v).toLocaleString('en-US');
 const usd2=v=>'$'+v.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+const sgn=v=>v>=0?usd(v):'-'+usd(-v);
 const map=L.map('map',{zoomControl:true}).setView([27.95,-82.55],10);
 L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',{attribution:'&copy; OpenStreetMap &copy; CARTO',subdomains:'abcd',maxZoom:19}).addTo(map);
 const layersByZip={}; const labelLayer=L.layerGroup().addTo(map); let activeZip=null;
-function styleFor(z){const c=greenFor(val(z)); return c?{weight:0.8,color:"#3f6b52",fillColor:c,fillOpacity:0.78}:{weight:0.6,color:"#d0d0d0",fillColor:"#ededed",fillOpacity:0.35};}
-function tipHtml(z){const d=DATA[z];const lab=MODES[metric];
-  return `<b>Zip ${z}</b><br><b>${lab}: ${val(z)}</b>${metric!=='n'?` of ${d.n} trips`:''}<br>`+
-    `Ambulatory ${d.amb} &middot; Wheelchair ${d.wc} &middot; Bariatric WC ${d.bwc} &middot; Stretcher ${d.str}<br>`+
-    `Revenue: ${usd(d.rev)} &middot; Rev/trip: ${usd2(d.rev/d.n)}`;}
+function styleFor(z){const c=shade(z); return c?{weight:0.8,color:"#3f6b52",fillColor:c,fillOpacity:0.80}:{weight:0.6,color:"#d0d0d0",fillColor:"#ededed",fillOpacity:0.35};}
+function tipHtml(z){const d=DATA[z];const pc=d.profit>=0?'#0b6b33':'#b91c1c';const head=metric==='profit'
+   ?`<b style="color:${pc}">Profit: ${sgn(d.profit)}</b>`:`<b>${MODES[metric]}: ${val(z)}</b>${metric!=='n'?` of ${d.n} trips`:''}`;
+  return `<b>Zip ${z}</b><br>${head}<br>`+
+   `Ambulatory ${d.amb} &middot; Wheelchair ${d.wc} &middot; Bariatric WC ${d.bwc} &middot; Stretcher ${d.str}<br>`+
+   `Trips: ${d.n} &middot; Revenue: ${usd(d.rev)} &middot; Cost: ${usd(d.cost)}<br>`+
+   `Profit: <span style="color:${pc}">${sgn(d.profit)}</span> &middot; Rev/trip: ${usd2(d.rev/d.n)}`;}
 function selectZip(zip){const lyr=layersByZip[zip];
   document.querySelectorAll('tr.row').forEach(tr=>tr.classList.toggle('active',tr.dataset.zip===zip));
-  if(!lyr)return;
-  if(activeZip&&layersByZip[activeZip])layersByZip[activeZip].setStyle(styleFor(activeZip));
-  activeZip=zip; const c=greenFor(val(zip))||'#bdbdbd';
-  lyr.setStyle({weight:4,color:'#000',fillColor:c,fillOpacity:0.92}); lyr.bringToFront();
+  if(!lyr)return; if(activeZip&&layersByZip[activeZip])layersByZip[activeZip].setStyle(styleFor(activeZip));
+  activeZip=zip; const c=shade(zip)||'#bdbdbd';
+  lyr.setStyle({weight:4,color:'#000',fillColor:c,fillOpacity:0.92});lyr.bringToFront();
   map.fitBounds(lyr.getBounds().pad(0.5));
   L.popup({offset:[0,-2]}).setLatLng(lyr.getBounds().getCenter()).setContent(tipHtml(zip)).openOn(map);}
-function buildTable(){const lab=MODES[metric];
-  const ranked=Object.entries(DATA).filter(([z])=>metric==='n'||val(z)>0).sort((a,b)=>val(b[0])-val(a[0]));
-  const th=document.querySelector('#tbl thead');
-  th.innerHTML = metric==='n'
-    ? '<tr><th>#</th><th>Zip</th><th class="n">Trips</th><th class="n">Revenue</th><th class="n">Rev/Trip</th></tr>'
-    : `<tr><th>#</th><th>Zip</th><th class="n">${lab}</th><th class="n">Trips</th><th class="n">Revenue</th></tr>`;
-  const tb=document.querySelector('#tbl tbody'); tb.innerHTML='';
-  ranked.forEach(([z,v],i)=>{const tr=document.createElement('tr');tr.className='row';tr.dataset.zip=z;
-    const sw=`<span class="swatch" style="background:${greenFor(val(z))||'#ededed'}"></span>`;
-    tr.innerHTML = metric==='n'
-      ? `<td>${i+1}</td><td>${sw}<span class="ziplink">${z}</span></td><td class="n">${v.n}</td><td class="n">${usd(v.rev)}</td><td class="n">${usd2(v.rev/v.n)}</td>`
-      : `<td>${i+1}</td><td>${sw}<span class="ziplink">${z}</span></td><td class="n">${val(z)}</td><td class="n">${v.n}</td><td class="n">${usd(v.rev)}</td>`;
-    tr.addEventListener('click',()=>selectZip(z)); tb.appendChild(tr);}); }
-function updateLegend(){legendDiv.innerHTML=`<b>${MODES[metric]} volume</b><br>`+
-  `<i style="background:${GREENS[6]}"></i> most<br><i style="background:${GREENS[3]}"></i> medium<br><i style="background:${GREENS[0]}"></i> fewest<br><i style="background:#ededed"></i> none`;}
-function setMetric(m){metric=m; curMax=Math.max(1,...Object.keys(DATA).map(val));
+function buildTable(){const th=document.querySelector('#tbl thead');const tb=document.querySelector('#tbl tbody');tb.innerHTML='';
+  if(metric==='profit'){const ranked=Object.entries(DATA).sort((a,b)=>b[1].profit-a[1].profit);
+    th.innerHTML='<tr><th>#</th><th>Zip</th><th class="n">Trips</th><th class="n">Revenue</th><th class="n">Cost</th><th class="n">Profit</th><th class="n">Rev/Trip</th></tr>';
+    ranked.forEach(([z,v],i)=>{const tr=document.createElement('tr');tr.className='row';tr.dataset.zip=z;
+      tr.innerHTML=`<td>${i+1}</td><td><span class="swatch" style="background:${shade(z)}"></span><span class="ziplink">${z}</span></td><td class="n">${v.n}</td><td class="n">${usd(v.rev)}</td><td class="n">${usd(v.cost)}</td><td class="n ${v.profit>=0?'pos':'neg'}">${sgn(v.profit)}</td><td class="n">${usd2(v.rev/v.n)}</td>`;
+      tr.addEventListener('click',()=>selectZip(z));tb.appendChild(tr);});return;}
+  const lab=MODES[metric];const ranked=Object.entries(DATA).filter(([z])=>metric==='n'||val(z)>0).sort((a,b)=>val(b[0])-val(a[0]));
+  th.innerHTML = metric==='n'?'<tr><th>#</th><th>Zip</th><th class="n">Trips</th><th class="n">Revenue</th><th class="n">Rev/Trip</th></tr>'
+    :`<tr><th>#</th><th>Zip</th><th class="n">${lab}</th><th class="n">Trips</th><th class="n">Revenue</th></tr>`;
+  ranked.forEach(([z,v],i)=>{const tr=document.createElement('tr');tr.className='row';tr.dataset.zip=z;const sw=`<span class="swatch" style="background:${shade(z)||'#ededed'}"></span>`;
+    tr.innerHTML = metric==='n'?`<td>${i+1}</td><td>${sw}<span class="ziplink">${z}</span></td><td class="n">${v.n}</td><td class="n">${usd(v.rev)}</td><td class="n">${usd2(v.rev/v.n)}</td>`
+      :`<td>${i+1}</td><td>${sw}<span class="ziplink">${z}</span></td><td class="n">${val(z)}</td><td class="n">${v.n}</td><td class="n">${usd(v.rev)}</td>`;
+    tr.addEventListener('click',()=>selectZip(z));tb.appendChild(tr);});}
+function updateLegend(){ legendDiv.innerHTML = metric==='profit'
+  ?`<b>Profit per zip</b><br><i style="background:${GREENS[6]}"></i> high profit<br><i style="background:${GREENS[2]}"></i> low profit<br><i style="background:${REDS[2]}"></i> small loss<br><i style="background:${REDS[6]}"></i> big loss`
+  :`<b>${MODES[metric]} volume</b><br><i style="background:${GREENS[6]}"></i> most<br><i style="background:${GREENS[3]}"></i> medium<br><i style="background:${GREENS[0]}"></i> fewest<br><i style="background:#ededed"></i> none`;}
+function setMetric(m){metric=m;
+  if(m==='profit')curMaxAbs=Math.max(1,...Object.keys(DATA).map(z=>Math.abs(DATA[z].profit)));else curMax=Math.max(1,...Object.keys(DATA).map(val));
   document.querySelectorAll('.mbtn').forEach(b=>b.classList.toggle('active',b.dataset.m===m));
   Object.keys(layersByZip).forEach(z=>{if(z!==activeZip)layersByZip[z].setStyle(styleFor(z));});
-  if(activeZip&&layersByZip[activeZip]){const c=greenFor(val(activeZip))||'#bdbdbd';layersByZip[activeZip].setStyle({weight:4,color:'#000',fillColor:c,fillOpacity:0.92});}
-  updateLegend(); buildTable();
-  document.getElementById('hint').textContent = m==='n'
-    ? 'Darker green = more trips. Toggle a level of service above to re-shade. Hover a zip or click a row for details.'
-    : `Shaded by ${MODES[m]} pickups per zip (darker = more). Grey = no ${MODES[m]} trips. Toggle back to Trip volume any time.`;}
+  if(activeZip&&layersByZip[activeZip]){const c=shade(activeZip)||'#bdbdbd';layersByZip[activeZip].setStyle({weight:4,color:'#000',fillColor:c,fillOpacity:0.92});}
+  updateLegend();buildTable();
+  document.getElementById('hint').textContent = m==='profit'
+    ?'Green = profitable zips, red = loss (revenue minus allocated direct cost). Click a row or zip for the full breakdown.'
+    :(m==='n'?'Darker green = more trips. Toggle a level of service or Profitability above. Hover a zip or click a row for details.'
+            :`Shaded by ${MODES[m]} pickups per zip (darker = more). Grey = none. Toggle back any time.`);}
 fetch("https://raw.githubusercontent.com/OpenDataDE/State-zip-code-GeoJSON/master/fl_florida_zip_codes_geo.min.json")
  .then(r=>{if(!r.ok)throw new Error(r.status);return r.json();})
  .then(gj=>{const want=new Set(Object.keys(DATA));const feats=gj.features.filter(f=>want.has(f.properties.ZCTA5CE10));
@@ -112,13 +120,13 @@ fetch("https://raw.githubusercontent.com/OpenDataDE/State-zip-code-GeoJSON/maste
       lyr.on('mouseout',()=>{if(z!==activeZip)lyr.setStyle(styleFor(z));});
       const c=lyr.getBounds().getCenter();
       L.marker(c,{interactive:false,keyboard:false,icon:L.divIcon({className:'',html:`<div class="zipcode">${z}</div>`,iconSize:[46,14],iconAnchor:[23,7]})}).addTo(labelLayer);}}).addTo(map);
-    const all=L.featureGroup(Object.values(layersByZip)); if(all.getBounds().isValid())map.fitBounds(all.getBounds().pad(0.05));
+    const all=L.featureGroup(Object.values(layersByZip));if(all.getBounds().isValid())map.fitBounds(all.getBounds().pad(0.05));
     function toggleLabels(){const show=map.getZoom()>=10;labelLayer.eachLayer(l=>{const e=l.getElement&&l.getElement();if(e)e.style.display=show?'':'none';});}
     map.on('zoomend',toggleLabels);toggleLabels();
     document.getElementById('status').textContent=`${feats.length} of ${Object.keys(DATA).length} served zips drawn.`;})
  .catch(e=>{document.getElementById('status').innerHTML=`<b style="color:#b91c1c">Could not load map boundaries</b> (${e.message}). The list below still works.`;});
-const lgctl=L.control({position:'bottomleft'}); let legendDiv;
-lgctl.onAdd=function(){legendDiv=L.DomUtil.create('div','legend');return legendDiv;}; lgctl.addTo(map); updateLegend();
+const lgctl=L.control({position:'bottomleft'});let legendDiv;
+lgctl.onAdd=function(){legendDiv=L.DomUtil.create('div','legend');return legendDiv;};lgctl.addTo(map);updateLegend();
 function fixSize(){setTimeout(()=>map.invalidateSize(),200);}
 window.addEventListener('resize',fixSize);window.addEventListener('orientationchange',fixSize);setTimeout(fixSize,400);
 buildTable();
