@@ -81,8 +81,8 @@ table.dt tr:hover td{background:#fafbfc;}
    <button data-g="week" onclick="pSetGrain('week')">Per Week</button>
    <button data-g="month" onclick="pSetGrain('month')">Per Month</button></div>
    <span class="note" id="pgrainlbl" style="margin-left:8px"></span></div>
- <div class="card"><h3>Productive vs. idle time by driver</h3><div style="height:430px"><canvas id="pchart"></canvas></div></div>
- <div class="card"><h3>Hours by driver</h3><table class="dt" id="ptable"><thead></thead><tbody></tbody></table>
+ <div class="card"><h3 id="pcharttitle">Productive vs. idle time by driver</h3><div style="height:430px"><canvas id="pchart"></canvas></div></div>
+ <div class="card"><h3 id="ptabletitle">Hours by driver</h3><table class="dt" id="ptable"><thead></thead><tbody></tbody></table>
   <p class="note">From RouteGenie shift telemetry (Mar 16 – Jun 6, 2026). <b>Productive</b> = Loaded (passenger onboard) + En-route (driving to pickup). <b>Idle</b> = RouteGenie "Wait" time (on the clock, not moving a passenger or en route). <b>Utilization</b> = Productive ÷ (Productive + Idle), shaded red (low) → green (high). Steve's shifts have no route timeline in RouteGenie, so he shows no data. Click any header to sort.</p></div>
 </div>
 
@@ -175,17 +175,21 @@ function pSetGrain(g){pGrain=g;document.querySelectorAll('#pgrain button').forEa
 function pSortBy(k){if(pSortKey===k)pSortDir*=-1;else{pSortKey=k;pSortDir=1;}pRender();}
 function pColor(u){const t=Math.max(0,Math.min(1,u));const h=Math.round(t*120);return 'hsl('+h+',65%,42%)';}
 function pRender(){
- const lbl={total:'Total hours over the period',day:'Average per operating day',week:'Average per active week',month:'Average per active month'}[pGrain];
+ const lbl={total:'Total hours over the period (Mar 16 \u2013 Jun 6)',day:'Average hours per operating day',week:'Average hours per active week',month:'Average hours per active month'}[pGrain];
  document.getElementById('pgrainlbl').textContent=lbl;
+ const u={total:'h',day:'h/day',week:'h/wk',month:'h/mo'}[pGrain];
+ const ttl={total:'total hours',day:'avg hours per day',week:'avg hours per week',month:'avg hours per month'}[pGrain];
+ document.getElementById('pcharttitle').textContent='Productive vs. idle \u2014 '+ttl+' by driver';
+ document.getElementById('ptabletitle').textContent='Hours by driver \u2014 '+ttl;
  const data=PROD.map(r=>{const prod=r.loaded+r.enroute;const den=pGrain==='total'?1:(pGrain==='day'?r.d:(pGrain==='week'?r.w:r.m))||1;
   return {f:r.f,sh:r.sh,d:r.d,idleH:r.idle/60/den,prodH:prod/60/den,loadedH:r.loaded/60/den,enrouteH:r.enroute/60/den,util:(prod+r.idle)>0?prod/(prod+r.idle):0,has:r.span>0};});
  const sk=pSortKey;data.sort((p,q)=>(p[sk]<q[sk]?1:-1)*pSortDir);
- const cols=[['f','Driver'],['sh','Shifts'],['d','Days'],['idleH','Idle h'],['enrouteH','En-route h'],['loadedH','Loaded h'],['prodH','Productive h'],['util','Utilization']];
+ const cols=[['f','Driver'],['sh','Shifts'],['d','Days'],['idleH','Idle '+u],['enrouteH','En-route '+u],['loadedH','Loaded '+u],['prodH','Productive '+u],['util','Utilization']];
  document.querySelector('#ptable thead').innerHTML='<tr>'+cols.map(([k,l])=>`<th onclick="pSortBy('${k}')">${l}${pSortKey===k?(pSortDir>0?' \u25bc':' \u25b2'):''}</th>`).join('')+'</tr>';
  document.querySelector('#ptable tbody').innerHTML=data.map(r=>r.has?`<tr><td>${r.f}</td><td>${fmt1(r.sh)}</td><td>${fmt1(r.d)}</td><td class="neg">${r.idleH.toFixed(1)}</td><td>${r.enrouteH.toFixed(1)}</td><td>${r.loadedH.toFixed(1)}</td><td class="pos">${r.prodH.toFixed(1)}</td><td><span style="background:${pColor(r.util)};color:#fff;padding:2px 9px;border-radius:10px;font-weight:700">${(r.util*100).toFixed(0)}%</span></td></tr>`:`<tr><td>${r.f}</td><td>${fmt1(r.sh)}</td><td>${fmt1(r.d)}</td><td colspan="5" style="color:#9ca3af">no route timeline in RouteGenie</td></tr>`).join('');
  const srt=data.filter(r=>r.has).sort((p,q)=>q.util-p.util);
  if(pchart)pchart.destroy();
- pchart=new Chart(document.getElementById('pchart'),{type:'bar',data:{labels:srt.map(r=>r.f),datasets:[{label:'Productive',data:srt.map(r=>r.prodH),backgroundColor:'#0f7a3d'},{label:'Idle',data:srt.map(r=>r.idleH),backgroundColor:'#c0392b'}]},options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,scales:{x:{stacked:true,ticks:{callback:v=>v+'h'}},y:{stacked:true}},plugins:{legend:{display:true},tooltip:{callbacks:{label:c=>c.dataset.label+': '+c.parsed.x.toFixed(1)+'h'}}}}});
+ pchart=new Chart(document.getElementById('pchart'),{type:'bar',data:{labels:srt.map(r=>r.f),datasets:[{label:'Productive',data:srt.map(r=>r.prodH),backgroundColor:'#0f7a3d'},{label:'Idle',data:srt.map(r=>r.idleH),backgroundColor:'#c0392b'}]},options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,scales:{x:{stacked:true,title:{display:true,text:ttl},ticks:{callback:v=>v+'h'}},y:{stacked:true}},plugins:{legend:{display:true},tooltip:{callbacks:{label:c=>c.dataset.label+': '+c.parsed.x.toFixed(1)+' '+u}}}}});
 }
 function showTab(t){['fin','ue','brk','prod','map'].forEach(v=>document.getElementById(v).style.display=v===t?'':'none');document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('active',x.dataset.tab===t));if(t==='brk'&&!window._bi){window._bi=1;bSetGrain('total');}if(t==='ue'&&!window._ui){window._ui=1;ueSetGrain('total');}if(t==='prod'&&!window._pi){window._pi=1;pRender();}}
 function doRefresh(btn){var a=document.querySelector('.tab.active');a=a?a.dataset.tab:'fin';if(btn){btn.textContent='\u21bb Refreshing\u2026';}if(a==='map'){var f=document.querySelector('.mapframe');var b=f.src.split('?')[0];f.src=b+'?t='+Date.now();setTimeout(function(){if(btn)btn.textContent='\u21bb Refresh';},900);}else{location.href=location.pathname+'?t='+Date.now()+'#'+a;}}
