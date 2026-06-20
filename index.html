@@ -52,7 +52,7 @@ table.dt tr:hover td{background:#fafbfc;}
  <div class="card"><h3 id="charttitle">Revenue vs. direct cost</h3><canvas id="chart" height="92"></canvas></div>
  <div class="card"><h3 id="tabletitle">Per-driver breakdown</h3>
   <table class="dt" id="dtable"><thead></thead><tbody></tbody></table>
-  <p class="note">Direct cost = Pay (payroll Driver Totals) + Fuel (fleet card) + Insurance ($9,100/mo premium at $350/operating-day, allocated to drivers on the road). Does not include overhead (office payroll, vehicle financing, software, fees, etc.), so revenue minus direct cost is not net profit. Revenue is shown in green when it covers the driver's direct cost, red when it does not. Revenue from trip reports. Drivers shown by first name. Click a column header to sort.</p>
+  <p class="note">Direct cost = Pay (payroll Driver Totals) + Fuel (fleet card) + Insurance ($9,100/mo premium at $350/operating-day, allocated to drivers on the road). Does not include overhead (office payroll, vehicle financing, software, fees, etc.), so revenue minus direct cost is not net profit. The “Rev − cost” column = revenue minus direct cost: green when positive, red and in (parentheses) when negative. It excludes overhead so it is not net profit. Click any column header to sort high→low or low→high. Revenue from trip reports. Drivers shown by first name. Click a column header to sort.</p>
  </div>
 </div>
 
@@ -66,6 +66,7 @@ const REC=[{"driver":"Steve","week":"2026-03-30","month":"March","pay":465.0,"fu
 const MONTHS=['March','April','May','June'];
 const fmt=n=>'$'+Math.round(n).toLocaleString();
 const fmt1=n=>n.toLocaleString(undefined,{maximumFractionDigits:0});
+const fmtS=n=>n>=0?'$'+Math.round(n).toLocaleString():'($'+Math.round(-n).toLocaleString()+')';
 let grain='total', chart=null;
 function weekLabel(w){const d=new Date(w+'T00:00:00');return d.toLocaleDateString('en-US',{month:'short',day:'numeric'});}
 function agg(rows){let o={pay:0,fuel:0,ins:0,rev:0,trips:0,days:0,hours:0};rows.forEach(r=>{o.pay+=r.pay;o.fuel+=r.fuel;o.ins+=r.ins;o.rev+=r.rev;o.trips+=r.trips;o.days+=r.days;o.hours+=r.hours;});o.cost=o.pay+o.fuel+o.ins;return o;}
@@ -73,9 +74,9 @@ function periods(){if(grain==='week')return [...new Set(REC.map(r=>r.week))].sor
 function setGrain(g){grain=g;document.querySelectorAll('#grain button').forEach(b=>b.classList.toggle('active',b.dataset.g===g));const sel=document.getElementById('period');const ps=periods();if(g==='total'){sel.style.display='none';}else{sel.style.display='';sel.innerHTML=ps.map(p=>`<option value="${p}">${g==='week'?'Week of '+weekLabel(p):p}</option>`).join('');}render();}
 function curRows(){const sel=document.getElementById('period');if(grain==='total')return REC;if(grain==='month')return REC.filter(r=>r.month===sel.value);return REC.filter(r=>r.week===sel.value);}
 function kpiHTML(a){return [['Revenue',fmt(a.rev)],['Total direct cost',fmt(a.cost)]].map(([l,v])=>`<div class="kpi"><div class="l">${l}</div><div class="v">${v}</div></div>`).join('');}
-let sortKey='rev',sortDir=-1;
-function drawTable(rows){const by={};rows.forEach(r=>{(by[r.driver]=by[r.driver]||[]).push(r);});let data=Object.entries(by).map(([d,rs])=>{const a=agg(rs);return {driver:d,...a};});data.sort((x,y)=>(x[sortKey]<y[sortKey]?1:-1)*sortDir);const cols=[['driver','Driver'],['trips','Trips'],['days','Days'],['pay','Pay'],['fuel','Fuel'],['ins','Insurance'],['cost','Direct cost'],['rev','Revenue']];document.querySelector('#dtable thead').innerHTML='<tr>'+cols.map(([k,l])=>`<th onclick="sortBy('${k}')">${l}</th>`).join('')+'</tr>';document.querySelector('#dtable tbody').innerHTML=data.map(r=>`<tr><td>${r.driver}</td><td>${fmt1(r.trips)}</td><td>${fmt1(r.days)}</td><td>${fmt(r.pay)}</td><td>${fmt(r.fuel)}</td><td>${fmt(r.ins)}</td><td>${fmt(r.cost)}</td><td class="${r.rev>=r.cost?'pos':'neg'}">${fmt(r.rev)}</td></tr>`).join('');}
-function sortBy(k){if(sortKey===k)sortDir*=-1;else{sortKey=k;sortDir=-1;}render();}
+let sortKey='delta',sortDir=1;
+function drawTable(rows){const by={};rows.forEach(r=>{(by[r.driver]=by[r.driver]||[]).push(r);});let data=Object.entries(by).map(([d,rs])=>{const a=agg(rs);return {driver:d,delta:a.rev-a.cost,...a};});data.sort((x,y)=>(x[sortKey]<y[sortKey]?1:-1)*sortDir);const cols=[['driver','Driver'],['trips','Trips'],['days','Days'],['pay','Pay'],['fuel','Fuel'],['ins','Insurance'],['cost','Direct cost'],['rev','Revenue'],['delta','Rev − cost']];document.querySelector('#dtable thead').innerHTML='<tr>'+cols.map(([k,l])=>`<th onclick="sortBy('${k}')">${l}${sortKey===k?(sortDir>0?' ▼':' ▲'):''}</th>`).join('')+'</tr>';document.querySelector('#dtable tbody').innerHTML=data.map(r=>`<tr><td>${r.driver}</td><td>${fmt1(r.trips)}</td><td>${fmt1(r.days)}</td><td>${fmt(r.pay)}</td><td>${fmt(r.fuel)}</td><td>${fmt(r.ins)}</td><td>${fmt(r.cost)}</td><td>${fmt(r.rev)}</td><td class="${r.delta>=0?'pos':'neg'}">${fmtS(r.delta)}</td></tr>`).join('');}
+function sortBy(k){if(sortKey===k)sortDir*=-1;else{sortKey=k;sortDir=1;}render();}
 function trend(){const ps=grain==='week'?[...new Set(REC.map(r=>r.week))].sort():MONTHS.filter(m=>REC.some(r=>r.month===m));const lab=ps.map(p=>grain==='week'?weekLabel(p):p);const f=grain==='week'?(p=>REC.filter(r=>r.week===p)):(p=>REC.filter(r=>r.month===p));return {lab,rev:ps.map(p=>agg(f(p)).rev),cost:ps.map(p=>agg(f(p)).cost)};}
 function render(){const a=agg(curRows());document.getElementById('kpis').innerHTML=kpiHTML(a);
  const sel=document.getElementById('period');document.getElementById('periodlbl').textContent=grain==='total'?'Full 12-week period':(grain==='month'?sel.value+' (weeks grouped by start date)':'Week of '+weekLabel(sel.value));
