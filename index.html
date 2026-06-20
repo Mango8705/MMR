@@ -262,6 +262,12 @@ function sBuild(day){
   for(let i=0;i<segs.length;i++){ if(segs[i].orig==='L'){segs[i].gid=g;let k=i-1;while(k>=0&&segs[k].orig==='R'&&segs[k].gid==null){segs[k].gid=g;k--;}g++;} }
   return {driver:r.driver,van:r.van,rate:r.rate,segs};
  });
+ // pair round-trip legs (return leg = reversed pickup/dropoff of an earlier leg, same driver)
+ let pc=0;
+ drivers.forEach(d=>{const ls=d.segs.filter(s=>s.cur==='L'&&s.trip).sort((x,y)=>x.a-y.a);
+  for(let i=0;i<ls.length;i++){const a=ls[i].trip;if(a.pid)continue;
+   for(let j=i+1;j<ls.length;j++){const b=ls[j].trip;if(b.pid)continue;
+    if(Math.abs(b.pla-a.dla)<0.01&&Math.abs(b.plo-a.dlo)<0.01&&Math.abs(b.dla-a.pla)<0.01&&Math.abs(b.dlo-a.plo)<0.01){const id='rt'+(pc++);a.pid=id;b.pid=id;break;}}}});
  const m={gmin,gmax,drivers}; drivers.forEach(d=>units(d)); return m;
 }
 function units(d){const m={};d.units=[];d.segs.forEach(s=>{if(s.gid!=null)(m[s.gid]=m[s.gid]||[]).push(s);});
@@ -314,11 +320,22 @@ function bindSA(){const c=document.getElementById('stable');
  });
  const hb=document.getElementById('sholdbar');if(hb){hb.ondragover=e=>{e.preventDefault();};hb.ondrop=e=>{e.preventDefault();sDropHold();};}
 }
+function findLeg(pid,exclude){
+ for(let di=0;di<sModel.drivers.length;di++){const d=sModel.drivers[di];
+  const seg=d.segs.find(s=>s.trip&&s.trip.pid===pid&&s.trip!==exclude);
+  if(seg){const gid=seg.gid;const unit=d.segs.filter(s=>s.gid===gid);
+   if(unit.some(s=>s.cur!=='O'))return {di:di,segs:unit,a:Math.min.apply(null,unit.map(s=>s.a)),tripObj:seg.trip};}}
+ return null;}
 function sFlip(di,si){const d=sModel.drivers[di];const s=d.segs[si];sPush();
  const grp=(s.gid!=null)?d.segs.filter(x=>x.gid===s.gid):[s];
  const ref=grp.filter(x=>x.cur==='L')[0]||grp[grp.length-1];
  let ph=(ref.cur===ref.orig)?0:(ref.cur==='O'?1:2); ph=(ph+1)%3;
  grp.forEach(x=>{x.cur=ph===0?x.orig:(ph===1?'O':'W');x.moved=(x.cur!==x.orig);});
+ if(ph===1){const tr=(grp.filter(x=>x.orig==='L')[0]||{}).trip;
+  if(tr&&tr.pid){const other=findLeg(tr.pid,tr);
+   if(other){const ot=other.tripObj;
+    if(confirm('This trip is one leg of a round trip.\nIts corresponding leg ('+ot.pu+' \u2192 '+ot.do+', '+hLab(other.a)+') is still scheduled.\nSet that leg to Off as well?')){
+     other.segs.forEach(x=>{x.cur='O';x.moved=true;});}}}}
  sRender();}
 function saW(a,b){return {a:a,b:b,orig:'W',cur:'W',gid:null,moved:true,trip:null};}
 function insertUnit(tgt,ua,ub,movedSegs){
