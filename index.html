@@ -106,9 +106,9 @@ table.sa td.cell.drag{opacity:.5}
    <span class="note" id="sdaynet" style="margin-left:12px"></span></div>
  <div class="sa-leg">
    <span><i class="sa-sw sa-AL"></i>Loading (passenger)</span><span><i class="sa-sw sa-AR"></i>In route</span>
-   <span><i class="sa-sw sa-w1"></i>Wait &lt;1h</span><span><i class="sa-sw sa-w2"></i>Wait 1\u20132h</span><span><i class="sa-sw sa-w3"></i>Wait &gt;2h</span><span><i class="sa-sw sa-O"></i>Off</span></div>
+   <span><i class="sa-sw sa-w1"></i>Wait &lt;1h</span><span><i class="sa-sw sa-w2"></i>Wait 1–2h</span><span><i class="sa-sw sa-w3"></i>Wait &gt;2h</span><span><i class="sa-sw sa-O"></i>Off</span></div>
  <div class="card sa-wrap"><h3 id="stitle">Shift report</h3><table class="sa" id="stable"></table>
-  <p class="note">Drag a green (active) block onto another driver's cell in the same hour to reassign that trip \u2014 its revenue and cost move with it, and the source driver's hour becomes Wait. Click any cell to flip it Off \u2192 Wait \u2192 back to original. Hover a cell for pickup\u2192dropoff. Net = revenue \u2212 labor (driver's hourly rate) \u2212 fuel (drive $6.25/hr, idle $1.98/hr) \u2212 insurance ($350/operating day, dropped if the van is parked all day). Sample days from RouteGenie; Steve excluded (no route telemetry).</p></div>
+  <p class="note">Drag a green (active) block onto another driver's cell in the same hour to reassign that trip — its revenue and cost move with it, and the source driver's hour becomes Wait. Click any cell to flip it Off → Wait → back to original. Hover a cell for pickup→dropoff. Net = revenue − labor (driver's hourly rate) − fuel (drive $6.25/hr, idle $1.98/hr) − insurance ($350/operating day, dropped if the van is parked all day). Sample days from RouteGenie; Steve excluded (no route telemetry).</p></div>
 </div>
 
 <div class="wrap" id="map" style="display:none">
@@ -200,12 +200,12 @@ function pSetGrain(g){pGrain=g;document.querySelectorAll('#pgrain button').forEa
 function pSortBy(k){if(pSortKey===k)pSortDir*=-1;else{pSortKey=k;pSortDir=1;}pRender();}
 function pColor(u){const t=Math.max(0,Math.min(1,u));const h=Math.round(t*120);return 'hsl('+h+',65%,42%)';}
 function pRender(){
- const lbl={total:'Total hours over the period (Mar 16 \u2013 Jun 6)',day:'Average hours per operating day',week:'Average hours per active week',month:'Average hours per active month'}[pGrain];
+ const lbl={total:'Total hours over the period (Mar 16 – Jun 6)',day:'Average hours per operating day',week:'Average hours per active week',month:'Average hours per active month'}[pGrain];
  document.getElementById('pgrainlbl').textContent=lbl;
  const u={total:'h',day:'h/day',week:'h/wk',month:'h/mo'}[pGrain];
  const ttl={total:'total hours',day:'avg hours per day',week:'avg hours per week',month:'avg hours per month'}[pGrain];
- document.getElementById('pcharttitle').textContent='Productive vs. idle \u2014 '+ttl+' by driver';
- document.getElementById('ptabletitle').textContent='Hours by driver \u2014 '+ttl;
+ document.getElementById('pcharttitle').textContent='Productive vs. idle — '+ttl+' by driver';
+ document.getElementById('ptabletitle').textContent='Hours by driver — '+ttl;
  const data=PROD.map(r=>{const prod=r.loaded+r.enroute;const den=pGrain==='total'?1:(pGrain==='day'?r.d:(pGrain==='week'?r.w:r.m))||1;
   return {f:r.f,sh:r.sh,d:r.d,idleH:r.idle/60/den,prodH:prod/60/den,loadedH:r.loaded/60/den,enrouteH:r.enroute/60/den,util:(prod+r.idle)>0?prod/(prod+r.idle):0,has:r.span>0};});
  const sk=pSortKey;data.sort((p,q)=>(p[sk]<q[sk]?1:-1)*pSortDir);
