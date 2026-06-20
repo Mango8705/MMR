@@ -99,14 +99,14 @@ function bRecRows(){const s=document.getElementById('bperiod');if(bGrain==='tota
 function bMaps(){const dc={},dt={};bRecRows().forEach(r=>{dc[r.driver]=(dc[r.driver]||0)+r.pay+r.fuel+r.ins;dt[r.driver]=(dt[r.driver]||0)+r.trips;});return{dc,dt};}
 function bSortBy(k){if(bSortKey===k)bSortDir*=-1;else{bSortKey=k;bSortDir=1;}bRender();}
 function bRender(){const {dc,dt}=bMaps();const m={};bCur().forEach(r=>{const o=m[r.broker]=m[r.broker]||{broker:r.broker,rev:0,trips:0,cost:0};o.rev+=r.rev;o.trips+=r.trips;const d=dt[r.driver]||0;if(d>0)o.cost+=(dc[r.driver]||0)*r.trips/d;});
- let data=Object.values(m);data.forEach(d=>{d.delta=d.rev-d.cost;d.rpt=d.trips?d.rev/d.trips:0;});
+ let data=Object.values(m);data.forEach(d=>{d.delta=d.rev-d.cost;d.margin=d.rev?d.delta/d.rev:0;d.rpt=d.trips?d.rev/d.trips:0;});
  const trev=data.reduce((s,d)=>s+d.rev,0),tcost=data.reduce((s,d)=>s+d.cost,0);
  document.getElementById('bkpis').innerHTML=[['Revenue',fmt(trev)],['Total direct cost',fmt(tcost)]].map(([l,v])=>`<div class="kpi"><div class="l">${l}</div><div class="v">${v}</div></div>`).join('');
  const s=document.getElementById('bperiod');document.getElementById('bperiodlbl').textContent=bGrain==='total'?'Full 12-week period':(bGrain==='month'?s.value:'Week of '+weekLabel(s.value));
  data.sort((p,q)=>(p[bSortKey]<q[bSortKey]?1:-1)*bSortDir);
- const cols=[['broker','Broker'],['trips','Trips'],['rev','Revenue'],['cost','Direct cost'],['delta','Rev − cost'],['rpt','Rev/Trip']];
+ const cols=[['broker','Broker'],['trips','Trips'],['rev','Revenue'],['cost','Direct cost'],['delta','Rev − cost'],['margin','Margin'],['rpt','Rev/Trip']];
  document.querySelector('#btable thead').innerHTML='<tr>'+cols.map(([k,l])=>`<th onclick="bSortBy('${k}')">${l}${bSortKey===k?(bSortDir>0?' ▼':' ▲'):''}</th>`).join('')+'</tr>';
- document.querySelector('#btable tbody').innerHTML=data.map(d=>`<tr><td>${d.broker}</td><td>${fmt1(d.trips)}</td><td>${fmt(d.rev)}</td><td>${fmt(d.cost)}</td><td class="${d.delta>=0?'pos':'neg'}">${fmtS(d.delta)}</td><td>$${d.rpt.toFixed(2)}</td></tr>`).join('');
+ document.querySelector('#btable tbody').innerHTML=data.map(d=>`<tr><td>${d.broker}</td><td>${fmt1(d.trips)}</td><td>${fmt(d.rev)}</td><td>${fmt(d.cost)}</td><td class="${d.delta>=0?'pos':'neg'}">${fmtS(d.delta)}</td><td class="${d.delta>=0?'pos':'neg'}">${(d.margin*100).toFixed(0)}%</td><td>$${d.rpt.toFixed(2)}</td></tr>`).join('');
  const srt=[...data].sort((p,q)=>q.rev-p.rev);if(bchart)bchart.destroy();
  bchart=new Chart(document.getElementById('bchart'),{type:'bar',data:{labels:srt.map(d=>d.broker),datasets:[{label:'Revenue',data:srt.map(d=>d.rev),backgroundColor:'#1f4e78'},{label:'Direct cost',data:srt.map(d=>d.cost),backgroundColor:'#e08a1e'}]},options:{responsive:true,plugins:{legend:{display:true}},scales:{y:{ticks:{callback:v=>'$'+(v/1000)+'k'}}}}});
  const bs=document.getElementById('bdrv');const cur=bs.value;bs.innerHTML=srt.map(d=>`<option ${d.broker===cur?'selected':''}>${d.broker}</option>`).join('');bRenderDrivers();}
