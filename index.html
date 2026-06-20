@@ -31,7 +31,7 @@ table.dt tr:hover td{background:#fafbfc;}
 .note{font-size:11.5px;color:#9ca3af;margin-top:12px;line-height:1.5;}
 @media(max-width:720px){.kpis{grid-template-columns:repeat(2,1fr)}}
 </style></head><body>
-<header><h1>My Medi Rides — Operations Dashboard</h1><p>Driver revenue vs. direct costs (Mar 16 – Jun 6, 2026) · Pickup demand by zip</p></header>
+<header style="display:flex;align-items:center;justify-content:space-between;gap:12px"><div><h1>My Medi Rides — Operations Dashboard</h1><p>Driver revenue vs. direct costs (Mar 16 – Jun 6, 2026) · Pickup demand by zip</p></div><button onclick="doRefresh(this)" title="Reload the latest published data for this tab" style="background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.45);border-radius:6px;padding:7px 13px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap">&#x21bb; Refresh</button></header>
 <div class="tabs"><div class="tab active" data-tab="fin" onclick="showTab('fin')">Financials</div><div class="tab" data-tab="ue" onclick="showTab('ue')">Unit Economics</div><div class="tab" data-tab="brk" onclick="showTab('brk')">By Broker</div><div class="tab" data-tab="map" onclick="showTab('map')">Pickup Map</div></div>
 
 <div class="wrap" id="fin">
@@ -149,5 +149,7 @@ function ueRender(){const by={};ueCur().forEach(r=>{const o=by[r.driver]=by[r.dr
  const srt=[...data].sort((p,q)=>q.ppt-p.ppt);if(uechart)uechart.destroy();
  uechart=new Chart(document.getElementById('uechart'),{type:'bar',data:{labels:srt.map(d=>d.driver),datasets:[{label:'Profit / paid trip',data:srt.map(d=>d.ppt),backgroundColor:srt.map(d=>d.ppt>=0?'#0f7a3d':'#c0392b')}]},options:{responsive:true,plugins:{legend:{display:false}},scales:{y:{ticks:{callback:v=>'$'+v}}}}});}
 function showTab(t){['fin','ue','brk','map'].forEach(v=>document.getElementById(v).style.display=v===t?'':'none');document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('active',x.dataset.tab===t));if(t==='brk'&&!window._bi){window._bi=1;bSetGrain('total');}if(t==='ue'&&!window._ui){window._ui=1;ueSetGrain('total');}}
+function doRefresh(btn){var a=document.querySelector('.tab.active');a=a?a.dataset.tab:'fin';if(btn){btn.textContent='\u21bb Refreshing\u2026';}if(a==='map'){var f=document.querySelector('.mapframe');var b=f.src.split('?')[0];f.src=b+'?t='+Date.now();setTimeout(function(){if(btn)btn.textContent='\u21bb Refresh';},900);}else{location.href=location.pathname+'?t='+Date.now()+'#'+a;}}
 setGrain('total');
+(function(){var h=(location.hash||'').replace('#','');if(['fin','ue','brk','map'].indexOf(h)>=0)showTab(h);})();
 </script></body></html>
