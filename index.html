@@ -78,8 +78,9 @@ table.sa td.cell.drag{opacity:.5}
 .mapframe{width:100%;height:78vh;border:1px solid var(--line);border-radius:10px;background:#eef3f1;}
 .note{font-size:11.5px;color:#9ca3af;margin-top:12px;line-height:1.5;}
 @media(max-width:720px){.kpis{grid-template-columns:repeat(2,1fr)}}
-</style></head><body>
-<header style="display:flex;align-items:center;justify-content:space-between;gap:12px"><div><h1>My Medi Rides — Operations Dashboard</h1><p>Driver revenue vs. direct costs (Mar 16 – Jun 6, 2026) · Pickup demand by zip</p></div><button onclick="doRefresh(this)" title="Reload the latest published data for this tab" style="background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.45);border-radius:6px;padding:7px 13px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap">&#x21bb; Refresh</button></header>
+.lbl-btn{background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.45);border-radius:6px;padding:7px 13px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap}.lbl-btn.hidden{display:none}body.lbl-editing [data-lblk]{outline:1px dashed #f59e0b;outline-offset:2px;background:rgba(245,158,11,.10);border-radius:3px;cursor:text}body.lbl-editing [data-lblk]:focus{outline:2px solid #f59e0b;background:rgba(245,158,11,.20)}.lbl-banner{display:none;background:#fffbeb;border-bottom:1px solid #fcd34d;color:#92400e;font-size:13px;line-height:1.4;padding:8px 16px;text-align:center}body.lbl-editing .lbl-banner{display:block}</style></head><body>
+<header style="display:flex;align-items:center;justify-content:space-between;gap:12px"><div><h1>My Medi Rides — Operations Dashboard</h1><p>Driver revenue vs. direct costs (Mar 16 – Jun 6, 2026) · Pickup demand by zip</p></div><div style="display:flex;gap:8px;align-items:center"><button onclick="doRefresh(this)" title="Reload the latest published data for this tab" class="lbl-btn">&#x21bb; Refresh</button><button id="lblEditBtn" onclick="lblToggle(this)" class="lbl-btn" title="Rename tabs, headers, section titles and category names">&#9998; Edit Labels</button><button id="lblCopyBtn" onclick="lblCopy(this)" class="lbl-btn hidden" title="Copy your label edits so they can be baked into the published file">Copy edits</button><button id="lblResetBtn" onclick="lblReset()" class="lbl-btn hidden" title="Discard your local label edits">Reset</button></div></header>
+<div class="lbl-banner">Label edit mode — click any tab name, column header, section title or category name to rename it. These are display labels only; the underlying data is unchanged. Click <b>Copy edits</b> when finished.</div>
 <div class="tabs"><div class="tab active" data-tab="fin" onclick="showTab('fin')">Financials</div><div class="tab" data-tab="ue" onclick="showTab('ue')">Unit Economics</div><div class="tab" data-tab="brk" onclick="showTab('brk')">By Broker</div><div class="tab" data-tab="prod" onclick="showTab('prod')">Productivity</div><div class="tab" data-tab="shift" onclick="showTab('shift')">Shift Analysis</div><div class="tab" data-tab="map" onclick="showTab('map')">Pickup Map</div></div>
 
 <div class="wrap" id="fin">
@@ -193,21 +194,21 @@ function bRecRows(){const s=document.getElementById('bperiod');if(bGrain==='tota
 function bMaps(){const dc={},dt={};bRecRows().forEach(r=>{dc[r.driver]=(dc[r.driver]||0)+r.pay+r.fuel+r.ins;dt[r.driver]=(dt[r.driver]||0)+r.trips;});return{dc,dt};}
 function bSortBy(k){if(bSortKey===k)bSortDir*=-1;else{bSortKey=k;bSortDir=1;}bRender();}
 function grp(rows,key,dc,dt){const m={};rows.forEach(r=>{const o=m[r[key]]=m[r[key]]||{k:r[key],rev:0,trips:0,ptrips:0,cost:0,amb:0,wc:0};o.rev+=r.rev;o.trips+=r.trips;o.ptrips+=(r.ptrips||0);o.amb+=(r.los==='Ambulatory'?r.trips:0);o.wc+=(r.los==='Wheelchair'?r.trips:0);const d=dt[r.driver]||0;if(d>0)o.cost+=(dc[r.driver]||0)*r.trips/d;});return Object.values(m).map(o=>({...o,delta:o.rev-o.cost,margin:o.rev?(o.rev-o.cost)/o.rev:0,rpt:o.ptrips?o.rev/o.ptrips:0}));}
-function bRender(){const {dc,dt}=bMaps();let data=grp(bCur(),'broker',dc,dt);
- const trev=data.reduce((s,d)=>s+d.rev,0),tcost=data.reduce((s,d)=>s+d.cost,0);
- document.getElementById('bkpis').innerHTML=[['Revenue',fmt(trev)],['Total direct cost',fmt(tcost)]].map(([l,v])=>`<div class="kpi"><div class="l">${l}</div><div class="v">${v}</div></div>`).join('');
+function bRender(){const {dc,dt}=bMaps();let data=grp(bCur(),'broker',dc,dt);data.forEach(d=>d.cpt=d.ptrips?d.cost/d.ptrips:0);
+ const trev=data.reduce((s,d)=>s+d.rev,0),tcost=data.reduce((s,d)=>s+d.cost,0),tptr=data.reduce((s,d)=>s+d.ptrips,0);
+ document.getElementById('bkpis').innerHTML=[['Revenue',fmt(trev)],['Total direct cost',fmt(tcost)],['Avg cost / trip',fmtc(tptr?tcost/tptr:0)]].map(([l,v])=>`<div class="kpi"><div class="l">${l}</div><div class="v">${v}</div></div>`).join('');
  const s=document.getElementById('bperiod');document.getElementById('bperiodlbl').textContent=bGrain==='total'?'Full 12-week period':(bGrain==='day'?dayLabel(s.value)+' \u00b7 cost = historic avg/day':(bGrain==='month'?s.value:'Week of '+weekLabel(s.value)));
  const sk=bSortKey==='broker'?'k':bSortKey;data.sort((p,q)=>(p[sk]<q[sk]?1:-1)*bSortDir);
- const cols=[['broker','Broker'],['trips','Trips'],['rev','Revenue'],['cost','Direct cost'],['delta','Rev − cost'],['margin','Margin'],['rpt','Rev/Trip']];
+ const cols=[['broker','Broker'],['trips','Trips'],['rev','Revenue'],['cost','Direct cost'],['delta','Rev − cost'],['margin','Margin'],['rpt','Rev/Trip'],['cpt','Cost/Trip']];
  document.querySelector('#btable thead').innerHTML='<tr>'+cols.map(([k,l])=>`<th onclick="bSortBy('${k}')">${l}${bSortKey===k?(bSortDir>0?' ▼':' ▲'):''}</th>`).join('')+'</tr>';
- document.querySelector('#btable tbody').innerHTML=data.map(d=>`<tr><td>${d.k}</td><td>${fmt1(d.trips)}</td><td>${fmt(d.rev)}</td><td>${fmt(d.cost)}</td><td class="${d.delta>=0?'pos':'neg'}">${fmtS(d.delta)}</td><td class="${d.delta>=0?'pos':'neg'}">${(d.margin*100).toFixed(0)}%</td><td>$${d.rpt.toFixed(2)}</td></tr>`).join('');
+ document.querySelector('#btable tbody').innerHTML=data.map(d=>`<tr><td>${d.k}</td><td>${fmt1(d.trips)}</td><td>${fmt(d.rev)}</td><td>${fmt(d.cost)}</td><td class="${d.delta>=0?'pos':'neg'}">${fmtS(d.delta)}</td><td class="${d.delta>=0?'pos':'neg'}">${(d.margin*100).toFixed(0)}%</td><td>$${d.rpt.toFixed(2)}</td><td>$${d.cpt.toFixed(2)}</td></tr>`).join('');
  const srt=[...data].sort((p,q)=>q.rev-p.rev);if(bchart)bchart.destroy();
  bchart=new Chart(document.getElementById('bchart'),{type:'bar',data:{labels:srt.map(d=>d.k),datasets:[{label:'Revenue',data:srt.map(d=>d.rev),backgroundColor:'#1f4e78'},{label:'Direct cost',data:srt.map(d=>d.cost),backgroundColor:'#e08a1e'}]},options:{responsive:true,plugins:{legend:{display:true}},scales:{y:{ticks:{callback:v=>'$'+(v/1000)+'k'}}}}});
  bBuildChecks();bDetail();}
-function tbl(elId,keyLabel,rows,ext){const ec=ext?'<th>Amb trips</th><th>WC trips</th>':'';const head='<tr><th>'+keyLabel+'</th><th>Trips</th>'+ec+'<th>Revenue</th><th>Direct cost</th><th>Rev − cost</th><th>Margin</th><th>Rev/Trip</th></tr>';
+function tbl(elId,keyLabel,rows,ext){const ec=ext?'<th>Amb trips</th><th>WC trips</th>':'';const head='<tr><th>'+keyLabel+'</th><th>Trips</th>'+ec+'<th>Revenue</th><th>Direct cost</th><th>Rev − cost</th><th>Margin</th><th>Rev/Trip</th><th>Cost/Trip</th></tr>';
  document.querySelector('#'+elId+' thead').innerHTML=head;
- const cspan=ext?9:7;
- document.querySelector('#'+elId+' tbody').innerHTML=rows.length?rows.map(x=>`<tr><td>${x.k}</td><td>${fmt1(x.trips)}</td>${ext?`<td>${fmt1(x.amb)}</td><td>${fmt1(x.wc)}</td>`:''}<td>${fmt(x.rev)}</td><td>${fmt(x.cost)}</td><td class="${x.delta>=0?'pos':'neg'}">${fmtS(x.delta)}</td><td class="${x.delta>=0?'pos':'neg'}">${(x.margin*100).toFixed(0)}%</td><td>$${x.rpt.toFixed(2)}</td></tr>`).join(''):`<tr><td colspan="${cspan}" style="text-align:center;color:#9ca3af;padding:10px">No trips for the selected broker(s) in this period.</td></tr>`;}
+ const cspan=ext?10:8;
+ document.querySelector('#'+elId+' tbody').innerHTML=rows.length?rows.map(x=>`<tr><td>${x.k}</td><td>${fmt1(x.trips)}</td>${ext?`<td>${fmt1(x.amb)}</td><td>${fmt1(x.wc)}</td>`:''}<td>${fmt(x.rev)}</td><td>${fmt(x.cost)}</td><td class="${x.delta>=0?'pos':'neg'}">${fmtS(x.delta)}</td><td class="${x.delta>=0?'pos':'neg'}">${(x.margin*100).toFixed(0)}%</td><td>$${x.rpt.toFixed(2)}</td><td>$${(x.ptrips?x.cost/x.ptrips:0).toFixed(2)}</td></tr>`).join(''):`<tr><td colspan="${cspan}" style="text-align:center;color:#9ca3af;padding:10px">No trips for the selected broker(s) in this period.</td></tr>`;}
 let bSel=null;
 function bSelSet(){if(!bSel)bSel=new Set(ALLBROKERS);return bSel;}
 function bToggleIdx(i,on){const s=bSelSet();if(on)s.add(ALLBROKERS[i]);else s.delete(ALLBROKERS[i]);bBuildChecks();bDetail();}
@@ -467,6 +468,24 @@ function sSetDay(day){sDay=day;document.querySelectorAll('#sgrain button').forEa
 function sInit(){const seg=document.getElementById('sgrain');seg.innerHTML=SHIFT.days.map((d,i)=>'<button data-d="'+d+'" class="'+(i===0?'active':'')+'" onclick="sSetDay(\''+d+'\')">'+d+'</button>').join('');sModel=sBuild(sDay);sHold=[];sOrigNet=sDayNet();sClearHist();sRender();}
 function showTab(t){['fin','ue','brk','prod','shift','map'].forEach(v=>document.getElementById(v).style.display=v===t?'':'none');document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('active',x.dataset.tab===t));if(t==='brk'&&!window._bi){window._bi=1;bSetGrain('total');}if(t==='ue'&&!window._ui){window._ui=1;ueSetGrain('total');}if(t==='prod'&&!window._pi){window._pi=1;pRender();}if(t==='shift'&&!window._si){window._si=1;sInit();}}
 function doRefresh(btn){var a=document.querySelector('.tab.active');a=a?a.dataset.tab:'fin';if(btn){btn.textContent='\u21bb Refreshing\u2026';}if(a==='map'){var f=document.querySelector('.mapframe');var b=f.src.split('?')[0];f.src=b+'?t='+Date.now();setTimeout(function(){if(btn)btn.textContent='\u21bb Refresh';},900);}else{location.href=location.pathname+'?t='+Date.now()+'#'+a;}}
+/* ===== LABEL EDIT MODE ===== */
+const LBL_DEFAULT={};
+let LBL=Object.assign({},LBL_DEFAULT);
+try{Object.assign(LBL,JSON.parse(localStorage.getItem('mmrLabels')||'{}'));}catch(e){}
+let LBLEDIT=false,_lblBusy=false,_lblRAF=0;
+function lblEls(){return document.querySelectorAll('.tab,.dt thead th,.kpi .l,.card h3:not([id]),.card h4,header h1,header p,.dt tbody td:first-child:not([colspan])');}
+function lblApply(){_lblBusy=true;lblEls().forEach(function(el){if(!el.hasAttribute('data-lblk')){var t=(el.textContent||'').replace(/\s+/g,' ').trim();if(!t){_lblBusy=true;return;}el.setAttribute('data-lblk',t);}var k=el.getAttribute('data-lblk');if(!k){return;}var ov=LBL[k];if(ov!=null&&el.textContent!==ov){el.textContent=ov;}if(LBLEDIT){el.setAttribute('contenteditable','true');}else if(el.hasAttribute('contenteditable')){el.removeAttribute('contenteditable');}});_lblBusy=false;}
+function lblSchedule(){if(_lblRAF){return;}_lblRAF=requestAnimationFrame(function(){_lblRAF=0;lblApply();});}
+function lblSave(){var d={};for(var k in LBL){if(LBL[k]!==LBL_DEFAULT[k]){d[k]=LBL[k];}}localStorage.setItem('mmrLabels',JSON.stringify(d));}
+function lblToggle(btn){LBLEDIT=!LBLEDIT;document.body.classList.toggle('lbl-editing',LBLEDIT);btn.innerHTML=LBLEDIT?'✓ Done':'✎ Edit Labels';document.getElementById('lblCopyBtn').classList.toggle('hidden',!LBLEDIT);document.getElementById('lblResetBtn').classList.toggle('hidden',!LBLEDIT);lblApply();}
+function lblCopy(btn){var txt=JSON.stringify(LBL);var done=function(){btn.textContent='Copied!';setTimeout(function(){btn.textContent='Copy edits';},1500);};if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(txt).then(done,function(){window.prompt('Copy your label edits:',txt);});}else{window.prompt('Copy your label edits:',txt);}}
+function lblReset(){if(!window.confirm('Discard your local label edits and revert to the published labels?')){return;}localStorage.removeItem('mmrLabels');LBL=Object.assign({},LBL_DEFAULT);location.reload();}
+document.addEventListener('focusout',function(e){if(!LBLEDIT){return;}var el=e.target;if(!el||!el.getAttribute||!el.hasAttribute('data-lblk')){return;}var k=el.getAttribute('data-lblk');var v=(el.textContent||'').replace(/\s+/g,' ').trim();if(!v){el.textContent=(LBL[k]!=null?LBL[k]:k);return;}if(v===k){delete LBL[k];}else{LBL[k]=v;}lblSave();});
+document.addEventListener('keydown',function(e){if(LBLEDIT&&e.key==='Enter'&&e.target&&e.target.hasAttribute&&e.target.hasAttribute('data-lblk')){e.preventDefault();e.target.blur();}});
+document.addEventListener('click',function(e){if(LBLEDIT&&e.target&&e.target.closest){var t=e.target.closest('.tab');if(t){e.stopPropagation();e.preventDefault();}}},true);
+(function(){var mo=new MutationObserver(function(){if(_lblBusy){return;}lblSchedule();});mo.observe(document.body,{childList:true,subtree:true});})();
+
 setGrain('total');
 (function(){var h=(location.hash||'').replace('#','');if(['fin','ue','brk','map'].indexOf(h)>=0)showTab(h);})();
+lblApply();
 </script></body></html>
