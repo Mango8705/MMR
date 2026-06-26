@@ -474,15 +474,17 @@ let LBL=Object.assign({},LBL_DEFAULT);
 try{Object.assign(LBL,JSON.parse(localStorage.getItem('mmrLabels')||'{}'));}catch(e){}
 let LBLEDIT=false,_lblBusy=false,_lblRAF=0;
 function lblEls(){return document.querySelectorAll('.tab,.dt thead th,.kpi .l,.card h3:not([id]),.card h4,header h1,header p,.dt tbody td:first-child:not([colspan])');}
-function lblApply(){_lblBusy=true;lblEls().forEach(function(el){if(!el.hasAttribute('data-lblk')){var t=(el.textContent||'').replace(/\s+/g,' ').trim();if(!t){_lblBusy=true;return;}el.setAttribute('data-lblk',t);}var k=el.getAttribute('data-lblk');if(!k){return;}var ov=LBL[k];if(ov!=null&&el.textContent!==ov){el.textContent=ov;}if(LBLEDIT){el.setAttribute('contenteditable','true');}else if(el.hasAttribute('contenteditable')){el.removeAttribute('contenteditable');}});_lblBusy=false;}
+function lblKey(el){return (el.textContent||'').replace(/[▲▼]/g,'').replace(/\s+/g,' ').trim();}
+function lblApply(){_lblBusy=true;lblEls().forEach(function(el){if(!el.hasAttribute('data-lblk')){var t=lblKey(el);if(!t){return;}el.setAttribute('data-lblk',t);}var k=el.getAttribute('data-lblk');if(!k){return;}var ov=LBL[k];if(ov!=null){var m=(el.textContent||'').match(/[▲▼]\s*$/);var want=ov+(m?(' '+m[0].trim()):'');if(el.textContent!==want){el.textContent=want;}}if(LBLEDIT){el.setAttribute('contenteditable','true');}else if(el.hasAttribute('contenteditable')){el.removeAttribute('contenteditable');}});_lblBusy=false;}
 function lblSchedule(){if(_lblRAF){return;}_lblRAF=requestAnimationFrame(function(){_lblRAF=0;lblApply();});}
 function lblSave(){var d={};for(var k in LBL){if(LBL[k]!==LBL_DEFAULT[k]){d[k]=LBL[k];}}localStorage.setItem('mmrLabels',JSON.stringify(d));}
 function lblToggle(btn){LBLEDIT=!LBLEDIT;document.body.classList.toggle('lbl-editing',LBLEDIT);btn.innerHTML=LBLEDIT?'✓ Done':'✎ Edit Labels';document.getElementById('lblCopyBtn').classList.toggle('hidden',!LBLEDIT);document.getElementById('lblResetBtn').classList.toggle('hidden',!LBLEDIT);lblApply();}
 function lblCopy(btn){var txt=JSON.stringify(LBL);var done=function(){btn.textContent='Copied!';setTimeout(function(){btn.textContent='Copy edits';},1500);};if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(txt).then(done,function(){window.prompt('Copy your label edits:',txt);});}else{window.prompt('Copy your label edits:',txt);}}
 function lblReset(){if(!window.confirm('Discard your local label edits and revert to the published labels?')){return;}localStorage.removeItem('mmrLabels');LBL=Object.assign({},LBL_DEFAULT);location.reload();}
-document.addEventListener('focusout',function(e){if(!LBLEDIT){return;}var el=e.target;if(!el||!el.getAttribute||!el.hasAttribute('data-lblk')){return;}var k=el.getAttribute('data-lblk');var v=(el.textContent||'').replace(/\s+/g,' ').trim();if(!v){el.textContent=(LBL[k]!=null?LBL[k]:k);return;}if(v===k){delete LBL[k];}else{LBL[k]=v;}lblSave();});
+document.addEventListener('focusout',function(e){if(!LBLEDIT){return;}var el=e.target;if(!el||!el.getAttribute||!el.hasAttribute('data-lblk')){return;}var k=el.getAttribute('data-lblk');var v=lblKey(el);if(!v){el.textContent=(LBL[k]!=null?LBL[k]:k);return;}if(v===k){delete LBL[k];}else{LBL[k]=v;}lblSave();});
 document.addEventListener('keydown',function(e){if(LBLEDIT&&e.key==='Enter'&&e.target&&e.target.hasAttribute&&e.target.hasAttribute('data-lblk')){e.preventDefault();e.target.blur();}});
-document.addEventListener('click',function(e){if(LBLEDIT&&e.target&&e.target.closest){var t=e.target.closest('.tab');if(t){e.stopPropagation();e.preventDefault();}}},true);
+document.addEventListener('click',function(e){if(LBLEDIT&&e.target&&e.target.closest){var t=e.target.closest('[data-lblk]');if(t){e.stopPropagation();}}},true);
+document.addEventListener('mousedown',function(e){if(LBLEDIT&&e.target&&e.target.closest){var t=e.target.closest('[data-lblk]');if(t){e.stopPropagation();}}},true);
 (function(){var mo=new MutationObserver(function(){if(_lblBusy){return;}lblSchedule();});mo.observe(document.body,{childList:true,subtree:true});})();
 
 setGrain('total');
