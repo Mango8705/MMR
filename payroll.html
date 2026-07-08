@@ -1,0 +1,332 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MMR Payroll — Clock vs. Dispatch/GPS Reconciliation</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root{--navy:#1f3864;--blue:#2e5496;--bg:#0f1b2d;--card:#16263f;--line:#2c456e;--txt:#e8eef7;--muted:#9fb0c8;--red:#ff8686;--redbg:#5a1b1b;--green:#7ee2a8;}
+*{box-sizing:border-box}
+body{margin:0;background:#0f1b2d;color:#e8eef7;font-family:Arial,Helvetica,sans-serif;font-size:14px}
+header{background:linear-gradient(90deg,#1f3864,#2e5496);padding:16px 22px}
+header h1{margin:0;font-size:20px}
+header p{margin:4px 0 0;color:#cfe;font-size:12px}
+.wrap{max-width:1500px;margin:0 auto;padding:18px 22px 60px}
+.cards{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.card{background:#16263f;border:1px solid #26436b;border-radius:8px;padding:14px}
+.card h3{margin:0 0 8px;font-size:14px;color:#bcd3f5}
+.card .num{display:inline-block;width:20px;height:20px;line-height:20px;text-align:center;background:#2e5496;border-radius:50%;font-size:12px;margin-right:6px}
+.card small{color:#9fb0c8;display:block;margin-top:6px;font-size:11px;line-height:1.4}
+input[type=file]{width:100%;color:#cfe;font-size:12px}
+textarea{width:100%;height:90px;background:#0f1b2d;color:#e8eef7;border:1px solid #26436b;border-radius:6px;padding:8px;font-family:monospace;font-size:11px;resize:vertical}
+.filebtn{display:block}
+button{background:#2e5496;color:#fff;border:0;border-radius:6px;padding:9px 16px;font-size:13px;font-weight:600;cursor:pointer}
+button:hover{background:#3a68b8}
+button.ghost{background:transparent;border:1px solid #4a6ea0;color:#cfe;font-weight:500;padding:6px 11px;font-size:12px}
+.run{margin:16px 0;display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.kpis{display:flex;gap:12px;margin:14px 0;flex-wrap:wrap}
+.kpi{background:#16263f;border:1px solid #26436b;border-radius:8px;padding:10px 16px;min-width:120px}
+.kpi .l{color:#9fb0c8;font-size:11px}
+.kpi .v{font-size:20px;font-weight:700;margin-top:2px}
+table{width:100%;border-collapse:collapse;font-size:12px;margin-top:6px}
+th,td{border:1px solid #24405f;padding:5px 7px;text-align:left;vertical-align:top}
+th{background:#2e5496;position:sticky;top:0;cursor:default;font-size:11px}
+td.c,th.c{text-align:center}
+tr.excl td{color:#7f8ba0;font-style:italic;background:#12203450}
+tr.nodata td{color:#7f8ba0;font-style:italic;background:#101c2e}
+.flag{background:#5a1b1b;color:#ff9c9c;font-weight:700}
+.note{color:#c9d6ea;max-width:520px}
+.rg{color:#7fb0ff;cursor:pointer;text-decoration:underline;font-size:11px}
+details{margin-top:14px;background:#12203a;border:1px solid #26436b;border-radius:8px;padding:10px 14px}
+summary{cursor:pointer;color:#bcd3f5;font-weight:600}
+pre{white-space:pre-wrap;word-break:break-all;background:#0b1626;border:1px solid #24405f;border-radius:6px;padding:10px;font-size:10px;max-height:220px;overflow:auto}
+.msg{margin-top:8px;font-size:12px}
+.err{color:#ff9c9c}.ok{color:#7ee2a8}
+.section{margin-top:26px}
+.muted{color:#9fb0c8}
+h2{font-size:16px;border-bottom:1px solid #2c456e;padding-bottom:6px}
+</style>
+</head>
+<body>
+<header>
+  <h1>MMR Payroll — Clock vs. Dispatch/GPS Reconciliation</h1>
+  <p>Upload the payroll report, paste the dispatch start times and the RouteGenie GPS (from the collector), and generate the deviation report.</p>
+</header>
+<div class="wrap">
+
+  <div class="cards">
+    <div class="card">
+      <h3><span class="num">1</span>Payroll report (.xlsx)</h3>
+      <input type="file" id="payFile" accept=".xlsx">
+      <small>The RouteGenie payroll export. Reads the "Driver Payroll Report" tab (Name, Date, Start/End Date Time). Gives clock-in / clock-out.</small>
+      <div id="payMsg" class="msg"></div>
+    </div>
+    <div class="card">
+      <h3><span class="num">2</span>Dispatch start times</h3>
+      <textarea id="dispText" placeholder="Paste the dispatch rows (Date, Van, Driver, Start Time) — e.g. from the Google Sheet — or upload:"></textarea>
+      <input type="file" id="dispFile" accept=".xlsx" style="margin-top:6px">
+      <small>Gives each driver's <b>suggested start</b>. Any format with Date / Driver / Start Time works.</small>
+      <div id="dispMsg" class="msg"></div>
+    </div>
+    <div class="card">
+      <h3><span class="num">3</span>RouteGenie GPS (collector JSON)</h3>
+      <textarea id="gpsText" placeholder="Paste the JSON copied by the RouteGenie collector..."></textarea>
+      <small>Actual start/end from the driver's GPS. Run the <a href="#" onclick="document.getElementById('collector').open=true;return false" style="color:#7fb0ff">collector</a> in RouteGenie (logged in) and paste its output here.</small>
+      <div id="gpsMsg" class="msg"></div>
+    </div>
+  </div>
+
+  <div class="run">
+    <button onclick="run()">Generate report</button>
+    <button class="ghost" onclick="exportXlsx()" id="expBtn" disabled>Export to Excel</button>
+    <span id="runMsg" class="msg"></span>
+  </div>
+
+  <details id="collector">
+    <summary>▸ RouteGenie GPS collector — run this in RouteGenie (logged in) to produce the GPS JSON for box 3</summary>
+    <p class="muted" style="font-size:12px">Log into RouteGenie → Scheduling → Driver Shifts. Open the browser console (F12) and paste the script below (or save it as a bookmarklet). Pick the week's Monday when prompted; it copies a JSON block to your clipboard — paste that into box 3.</p>
+    <button class="ghost" onclick="copyCollector()">Copy collector script</button>
+    <span id="colMsg" class="msg"></span>
+    <pre id="collectorCode"></pre>
+  </details>
+
+  <div class="section" id="results" style="display:none">
+    <h2>Reconciliation — <span id="weekLabel"></span></h2>
+    <div class="kpis" id="kpis"></div>
+    <div style="overflow:auto;max-height:70vh">
+      <table id="tbl"><thead></thead><tbody></tbody></table>
+    </div>
+    <h2 style="margin-top:22px">Summary (clocked vs. corrected)</h2>
+    <table id="sumtbl"><thead></thead><tbody></tbody></table>
+    <p class="muted" style="font-size:11px;margin-top:8px">Gerald Limmitt: contractor (per-trip) except Saturdays — only Saturday tracked. Jimmy Kora: salaried — omitted. Red = deviation beyond threshold (start: &gt;7 min early / &gt;15 min late; end: ≥10 min).</p>
+  </div>
+</div>
+
+<script>
+/* ============================ CONFIG ============================ */
+const TC=[28.22405,-82.72590], PP=[27.83985,-82.72118];
+const DRIVERS={
+  atkins:{names:['moses atkins','moses'],first:'moses',base:[27.949037,-82.790298],baseType:'Home'},
+  limmitt:{names:['gerald limmitt','gerald'],first:'gerald',base:[28.230938,-82.702533],baseType:'Home',contractorExceptSat:true},
+  jackson:{names:['keary jackson','keary'],first:'keary',base:[27.85085,-82.76001],baseType:'Home'},
+  sizemore:{names:['lonnie sizemore','lonnie'],first:'lonnie',base:[27.89976,-82.71938],baseType:'Home'},
+  weimar:{names:['kerry weimar','kerry'],first:'kerry',base:PP,baseType:'Pinellas Park'},
+  stuckey:{names:['eric stuckey','eric'],first:'eric',base:PP,baseType:'Pinellas Park'},
+  shepard:{names:['rick shepard','rick thanh shepard','rick'],first:'rick',base:[27.85089,-82.75988],baseType:'Home'},
+  hillje:{names:['anthony hillje','anthony'],first:'anthony',base:TC,baseType:'Trouble Creek'},
+  wilson:{names:['thomas wilson','thomas'],first:'thomas',base:[27.76639,-82.68420],baseType:'Home'},
+  acordi:{names:['mackson acordi','mackson'],first:'mackson',base:TC,baseType:'Trouble Creek'},
+  harvey:{names:['joseph harvey','joseph'],first:'joseph',base:TC,baseType:'Trouble Creek'},
+  caraballo:{names:['jhennissa caraballo','jhennissa','jhennisa'],first:'jhennissa',base:null,baseType:'—'}
+};
+const OMIT=['jimmy','kora','steve','saari'];
+const TH={startEarly:7,startLate:15,endFlag:10,endCorrect:5};
+const DOW=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+const RG_BASE='https://mymedi.routegenie.com/#!/shifts';
+
+/* ============================ HELPERS ============================ */
+function driverKeyFromName(n){n=(n||'').toLowerCase();if(OMIT.some(o=>n.indexOf(o)>=0))return '';for(const k in DRIVERS)if(DRIVERS[k].names.some(x=>n.indexOf(x)>=0))return k;return '';}
+function keyFromFirst(f){f=(f||'').toLowerCase();if(f==='jhennisa')f='jhennissa';for(const k in DRIVERS)if(DRIVERS[k].first===f)return k;return '';}
+function pad(n){return String(n).padStart(2,'0')}
+function parseDT(s){const m=String(s).match(/(\d+)\/(\d+)\/(\d+)\s+(\d+):(\d+)/);if(!m)return null;return new Date(+m[3],+m[1]-1,+m[2],+m[4],+m[5]);}
+function parseDTs(s){const m=String(s).match(/(\d+)\/(\d+)\/(\d+)\s+(\d+):(\d+):(\d+)/);if(!m)return null;return new Date(+m[3],+m[1]-1,+m[2],+m[4],+m[5],+m[6]);}
+function hm(d){return d?pad(d.getHours())+':'+pad(d.getMinutes()):''}
+function hhmm(mn){const s=mn<0?'-':'';mn=Math.abs(Math.round(mn));return s+Math.floor(mn/60)+':'+pad(mn%60);}
+function mdyKey(s){return String(s).slice(0,5);} // MM/DD
+
+/* ============================ PARSERS ============================ */
+let PAY=null, DISP=null, GPS=null;
+
+document.getElementById('payFile').onchange=e=>readXlsx(e.target.files[0],wb=>{
+  try{PAY=parsePayroll(wb);document.getElementById('payMsg').innerHTML='<span class=ok>✓ '+PAY.length+' driver-days</span>';}
+  catch(err){PAY=null;document.getElementById('payMsg').innerHTML='<span class=err>'+err.message+'</span>';}
+});
+document.getElementById('dispFile').onchange=e=>readXlsx(e.target.files[0],wb=>{
+  let txt='';wb.SheetNames.forEach(sn=>{txt+='\n'+XLSX.utils.sheet_to_csv(wb.Sheets[sn]);});
+  document.getElementById('dispText').value=txt.trim();parseDispatchLive();
+});
+document.getElementById('dispText').oninput=parseDispatchLive;
+document.getElementById('gpsText').oninput=parseGpsLive;
+
+function readXlsx(file,cb){if(!file)return;const r=new FileReader();r.onload=ev=>cb(XLSX.read(ev.target.result,{type:'array'}));r.readAsArrayBuffer(file);}
+
+function parsePayroll(wb){
+  const sh=wb.Sheets['Driver Payroll Report']||wb.Sheets[wb.SheetNames[0]];
+  const rows=XLSX.utils.sheet_to_json(sh,{header:1,raw:false});
+  // header on row index 1
+  const head=(rows[1]||[]).map(x=>String(x||'').trim().toLowerCase());
+  const iN=head.indexOf('name'),iD=head.indexOf('date'),iS=head.indexOf('start date time'),iE=head.indexOf('end date time');
+  if(iN<0||iD<0||iS<0||iE<0)throw new Error('Payroll columns changed (need Name/Date/Start Date Time/End Date Time on row 2)');
+  const out=[];
+  for(let r=2;r<rows.length;r++){const row=rows[r];if(!row||!row[iN])continue;out.push({name:String(row[iN]),date:String(row[iD]).slice(0,10),start:String(row[iS]),end:String(row[iE])});}
+  if(!out.length)throw new Error('No payroll rows found');
+  return out;
+}
+function parseDispatchLive(){
+  const t=document.getElementById('dispText').value;
+  try{DISP=parseDispatch(t);const n=Object.keys(DISP).length;document.getElementById('dispMsg').innerHTML=n?'<span class=ok>✓ '+n+' dispatch entries</span>':'<span class=err>no rows parsed</span>';}
+  catch(e){DISP=null;document.getElementById('dispMsg').innerHTML='<span class=err>'+e.message+'</span>';}
+}
+function parseDispatch(text){
+  const map={};const re=/(\d{1,2}\/\d{1,2}\/\d{4})[,\s]+(\d+)[,\s]+([A-Za-z]+)[,\s]+(\d{1,2}:\d{2}\s*[AP]M)/g;let m;
+  while((m=re.exec(text))){const date=m[1],first=m[3].toLowerCase(),tm=m[4].toUpperCase().replace(/\s+/,' ');map[first+'|'+date.slice(0,5)]=tm;}
+  return map;
+}
+function parseGpsLive(){
+  const t=document.getElementById('gpsText').value.trim();
+  if(!t){GPS=null;document.getElementById('gpsMsg').innerHTML='';return;}
+  try{const o=JSON.parse(t);const arr=o.data||o;GPS={};let n=0;
+    (Array.isArray(arr)?arr:[]).forEach(x=>{const k=x.driver+'|'+mdyKey(x.date);(GPS[k]=GPS[k]||[]).push(x);n++;});
+    document.getElementById('gpsMsg').innerHTML='<span class=ok>✓ '+n+' GPS shifts'+(o.week?(' ('+o.week+')'):'')+'</span>';}
+  catch(e){GPS=null;document.getElementById('gpsMsg').innerHTML='<span class=err>invalid JSON</span>';}
+}
+
+/* ============================ ENGINE ============================ */
+function sugToDate(dateMDY,tstr){const m=tstr.match(/(\d+):(\d+)\s*([AP]M)/);let h=(+m[1])%12;if(/PM/i.test(m[3]))h+=12;const d=parseDT(dateMDY+' 00:00');d.setHours(h,+m[2],0,0);return d;}
+function flipAMPM(d){const x=new Date(d);x.setHours((x.getHours()+12)%24);return x;}
+
+function reconcile(){
+  const bydate={}, paygrp={};
+  PAY.forEach(p=>{const k=driverKeyFromName(p.name);if(!k)return;(paygrp[k+'|'+mdyKey(p.date)]=paygrp[k+'|'+mdyKey(p.date)]||[]).push(Object.assign({key:k},p));});
+  // week label + dates
+  const alldates=[...new Set(PAY.map(p=>p.date))].filter(x=>/\d/.test(x)).sort((a,b)=>parseDT(a+' 00:00')-parseDT(b+' 00:00'));
+  const first=parseDT(alldates[0]+' 00:00'); const monday=new Date(first);monday.setDate(monday.getDate()-((monday.getDay()+6)%7));
+  const weekDates=[];for(let i=0;i<7;i++){const d=new Date(monday);d.setDate(monday.getDate()+i);weekDates.push(pad(d.getMonth()+1)+'/'+pad(d.getDate())+'/'+d.getFullYear());}
+  const datesPresent={};PAY.forEach(p=>datesPresent[p.date.slice(0,10)]=1);
+
+  const rows=[];
+  Object.keys(paygrp).forEach(gk=>{
+    const list=paygrp[gk].slice().sort((a,b)=>parseDT(a.start)-parseDT(b.start));
+    const k=list[0].key, mmdd=gk.split('|')[1];
+    const pool=(GPS&&GPS[gk]?GPS[gk].slice():[]);
+    list.forEach(p=>{
+      const date=p.date.slice(0,10), ci=parseDT(p.start), co=parseDT(p.end);
+      const dow=(parseDT(date+' 00:00').getDay()+6)%7, midnight=co.getDate()!==ci.getDate();
+      const D=DRIVERS[k];
+      const base={date:date+' ('+DOW[dow]+')',driver:D.names[0].replace(/\b\w/g,c=>c.toUpperCase()),bt:D.baseType,ci:hm(ci),co:midnight?(pad(co.getMonth()+1)+'/'+pad(co.getDate())+' '+hm(co)):hm(co),_d:parseDT(date+' 00:00').getTime()};
+      if(D.contractorExceptSat&&dow!==5){rows.push(Object.assign(base,{excl:'gerald',sug:'',inD:'',ae:'',outD:'',clk:'',corr:'',note:'Contractor paid per trip — hours not tracked (except Saturdays).'}));return;}
+      // pick gps by nearest clock-in
+      let g=null;if(pool.length){let bi=0,bd=1e15;pool.forEach((x,i)=>{const a=x.actualEnd?Math.abs(parseDTs(x.actualEnd)-ci):9e14;if(a<bd){bd=a;bi=i;}});g=pool.splice(bi,1)[0];}
+      // suggested start
+      let sugRaw=DISP?DISP[D.first+'|'+mmdd]:null; let sug=sugRaw?sugToDate(date,sugRaw):null, typo=false;
+      if(sug&&Math.abs((ci-sug)/60000)>300){const f=flipAMPM(sug);if(Math.abs((ci-f)/60000)<Math.abs((ci-sug)/60000)){sug=f;typo=true;}}
+      const inD=sug?Math.round((ci-sug)/60000):null;
+      const fi=inD!=null&&(inD<-TH.startEarly||inD>TH.startLate);
+      const aeDt=(g&&g.actualEnd)?parseDTs(g.actualEnd):null;
+      const outD=aeDt?Math.round((co-aeDt)/60000):null;
+      const fo=outD!=null&&Math.abs(outD)>=TH.endFlag;
+      const corrStart=(inD!=null&&inD<-TH.startEarly&&sug)?sug:ci;
+      const corrEnd=(aeDt&&Math.abs((co-aeDt)/60000)>TH.endCorrect)?aeDt:co;
+      const clk=(co-ci)/60000, corr=(corrEnd-corrStart)/60000;
+      const method=g?g.method:'NoGPS', fd=g?g.finalDistMi:null;
+      const n=[];
+      if(!sugRaw)n.push('No dispatch start listed.');
+      else if(fi)n.push(inD<0?('Clocked in '+(-inD)+' min before suggested start ('+hm(sug)+').'):('Clocked in '+inD+' min after suggested start ('+hm(sug)+').'));
+      if(typo)n.push('(Dispatch listed '+sugRaw+' — treated as AM; suspected typo.)');
+      if(!aeDt)n.push('No GPS end — clock-out used as-is.');
+      else if(midnight)n.push('No clock-out recorded — auto-closed 00:01; back at base by '+hm(aeDt)+'.');
+      else if(fo&&outD>0)n.push('Back at base by '+hm(aeDt)+' but clocked out '+hm(co)+' — '+outD+' min extra.');
+      else if(fo&&outD<0)n.push('Clocked out '+(-outD)+' min before reaching base.');
+      if(method&&method.indexOf('last-stop')>=0&&D.base)n.push('Did not return to base (ended ~'+fd+' mi away); end = last stop.');
+      else if(method==='last-stop')n.push('No fixed base; end = last sustained stop.');
+      if(corr!=null&&clk-corr>=10)n.push('Corrected trims '+hhmm(clk-corr)+'.');
+      if(!n.length)n.push('Clock matches suggested start & GPS end.');
+      rows.push(Object.assign(base,{excl:null,sug:sug?hm(sug):'n/a',inD,ae:aeDt?hm(aeDt):'no GPS',outD,clk:hhmm(clk),corr:corr!=null?hhmm(corr):'',note:n.join(' '),fi,fo,_clk:clk,_corr:corr,shift:g?g.shift:null}));
+    });
+  });
+  // Sunday no-data
+  const sun=weekDates[6];
+  if(!datesPresent[sun])rows.push({date:sun+' (Sun)',driver:'',bt:'',excl:'nodata',sug:'',ci:'',inD:'',co:'',ae:'',outD:'',clk:'',corr:'',note:'No hours to report for this day.',_d:parseDT(sun+' 00:00').getTime()});
+  rows.sort((a,b)=>((a.driver||'zzzz').localeCompare(b.driver||'zzzz'))|| (a._d-b._d));
+  const label=(monday.getMonth()+1)+'/'+monday.getDate()+' – '+(new Date(monday.getTime()+6*864e5).getMonth()+1)+'/'+new Date(monday.getTime()+6*864e5).getDate()+'/'+new Date(monday.getTime()+6*864e5).getFullYear();
+  return {rows,label};
+}
+
+/* ============================ RENDER ============================ */
+let RESULT=null;
+function run(){
+  const rm=document.getElementById('runMsg');
+  if(!PAY){rm.innerHTML='<span class=err>Upload the payroll report first.</span>';return;}
+  if(!DISP)rm.innerHTML='<span class=err style="margin-right:8px">No dispatch — suggested-start column will be blank.</span>';
+  if(!GPS)rm.innerHTML=(rm.innerHTML||'')+'<span class=err>No GPS — end times can\'t be verified.</span>';
+  RESULT=reconcile();
+  document.getElementById('weekLabel').textContent=RESULT.label;
+  const rows=RESULT.rows;
+  let flagged=0,noGps=0;rows.forEach(r=>{if(r.fi||r.fo)flagged++;if(r.ae==='no GPS')noGps++;});
+  document.getElementById('kpis').innerHTML=[['Driver-days',rows.length],['Flagged',flagged],['No GPS',noGps]].map(([l,v])=>'<div class=kpi><div class=l>'+l+'</div><div class=v>'+v+'</div></div>').join('');
+  const cols=['Date','Driver','Base','Suggested','Clock-in','In Δ','Clock-out','Actual End','Out Δ','Clocked','Corrected','Notes','RG'];
+  document.querySelector('#tbl thead').innerHTML='<tr>'+cols.map(c=>'<th class="c">'+c+'</th>').join('')+'</tr>';
+  document.querySelector('#tbl tbody').innerHTML=rows.map(r=>{
+    if(r.excl==='nodata')return '<tr class=nodata><td>'+r.date+'</td><td colspan=12>'+r.note+'</td></tr>';
+    if(r.excl)return '<tr class=excl><td>'+r.date+'</td><td>'+r.driver+'</td><td>'+r.bt+'</td><td colspan=8 class=c>—</td><td class=note>'+r.note+'</td><td></td></tr>';
+    const inC=(r.fi?'class="c flag"':'class=c'), outC=(r.fo?'class="c flag"':'class=c');
+    const rg=r.shift?('<span class=rg onclick="openShift('+r.shift+',\''+r.date.slice(0,10)+'\')">shift '+r.shift+'</span>'):'';
+    return '<tr><td>'+r.date+'</td><td>'+r.driver+'</td><td>'+r.bt+'</td><td class=c>'+r.sug+'</td><td class=c>'+r.ci+'</td><td '+inC+'>'+fmtD(r.inD)+'</td><td class=c>'+r.co+'</td><td class=c>'+r.ae+'</td><td '+outC+'>'+fmtD(r.outD)+'</td><td class=c>'+r.clk+'</td><td class=c>'+r.corr+'</td><td class=note>'+r.note+'</td><td class=c>'+rg+'</td></tr>';
+  }).join('');
+  // summary
+  const agg={};rows.forEach(r=>{if(r.excl||r._corr==null)return;const a=agg[r.driver]=agg[r.driver]||{d:0,clk:0,corr:0};a.d++;a.clk+=r._clk;a.corr+=r._corr;});
+  const srt=Object.keys(agg).sort((x,y)=>(agg[y].clk-agg[y].corr)-(agg[x].clk-agg[x].corr));
+  document.querySelector('#sumtbl thead').innerHTML='<tr><th>Driver</th><th class=c>Days</th><th class=c>Clocked</th><th class=c>Corrected</th><th class=c>Difference</th></tr>';
+  document.querySelector('#sumtbl tbody').innerHTML=srt.map(d=>{const a=agg[d],diff=a.clk-a.corr;return '<tr><td>'+d+'</td><td class=c>'+a.d+'</td><td class=c>'+hhmm(a.clk)+'</td><td class=c>'+hhmm(a.corr)+'</td><td class="c'+(diff>=30?' flag':'')+'">'+hhmm(diff)+'</td></tr>';}).join('');
+  document.getElementById('results').style.display='';
+  document.getElementById('expBtn').disabled=false;
+  if(!rm.innerHTML)rm.innerHTML='<span class=ok>✓ '+rows.length+' rows, '+flagged+' flagged</span>';
+}
+function fmtD(v){return v==null||v===''?'':(v>0?'+'+v:''+v);}
+function openShift(id,date){
+  // Best a hosted page can do without the in-RouteGenie helper: open the shifts board.
+  window.open(RG_BASE,'routegenie');
+  navigator.clipboard&&navigator.clipboard.writeText(String(id));
+  document.getElementById('runMsg').innerHTML='<span class=ok>Opened RouteGenie Driver Shifts. Shift '+id+' ('+date+') copied — open its Info → Route. (One-click jump needs the RouteGenie bookmarklet.)</span>';
+}
+
+/* ============================ EXPORT ============================ */
+function exportXlsx(){
+  if(!RESULT)return;
+  const head=['Date','Driver','Base','Suggested Start','Clock-in','In Δ (min)','Clock-out','Actual End','Out Δ (min)','Clocked Hrs','Corrected Hrs','Notes'];
+  const data=[head].concat(RESULT.rows.map(r=>[r.date,r.driver,r.bt,r.sug,r.ci,r.inD,r.co,r.ae,r.outD,r.clk,r.corr,r.note]));
+  const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(data),'Clock Reconciliation');
+  const agg={};RESULT.rows.forEach(r=>{if(r.excl||r._corr==null)return;const a=agg[r.driver]=agg[r.driver]||{d:0,clk:0,corr:0};a.d++;a.clk+=r._clk;a.corr+=r._corr;});
+  const sd=[['Driver','Days','Clocked','Corrected','Difference']].concat(Object.keys(agg).sort((x,y)=>(agg[y].clk-agg[y].corr)-(agg[x].clk-agg[x].corr)).map(d=>[d,agg[d].d,hhmm(agg[d].clk),hhmm(agg[d].corr),hhmm(agg[d].clk-agg[d].corr)]));
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(sd),'Summary');
+  XLSX.writeFile(wb,'MyMedi_Clock_Reconciliation_'+RESULT.label.replace(/[\/ ]/g,'-')+'.xlsx');
+}
+
+/* ============================ COLLECTOR ============================ */
+const COLLECTOR=`/* MMR RouteGenie GPS collector — run on Driver Shifts while LOGGED IN */
+(async()=>{
+ const BASE='https://mymedi.routegenie.com:8000/api/v1';
+ const TC=[28.22405,-82.72590],PP=[27.83985,-82.72118];
+ const D={atkins:[27.949037,-82.790298],limmitt:[28.230938,-82.702533],jackson:[27.85085,-82.76001],sizemore:[27.89976,-82.71938],weimar:PP,stuckey:PP,shepard:[27.85089,-82.75988],hillje:TC,wilson:[27.76639,-82.68420],acordi:TC,harvey:TC,caraballo:null};
+ const KM={moses:'atkins',gerald:'limmitt',keary:'jackson',lonnie:'sizemore',kerry:'weimar',eric:'stuckey',rick:'shepard',anthony:'hillje',thomas:'wilson',mackson:'acordi',joseph:'harvey',jhennissa:'caraballo',jhennisa:'caraballo'};
+ const OMIT=['jimmy','kora','steve','saari'];
+ if(!window.__tok){const o=XMLHttpRequest.prototype.setRequestHeader;XMLHttpRequest.prototype.setRequestHeader=function(k,v){if(String(k).toLowerCase()==='x-access-token')window.__tok=v;return o.apply(this,arguments)};const f=window.fetch;window.fetch=function(i,n){try{const h=(n&&n.headers)||(i&&i.headers);if(h){const g=(o,k)=>o.get?o.get(k):(o[k]||o[k.toLowerCase()]);const t=g(h,'X-Access-Token');if(t)window.__tok=t}}catch(e){}return f.apply(this,arguments)};try{angular.element(document.body).injector().get('$route').reload()}catch(e){}for(let i=0;i<40&&!window.__tok;i++)await new Promise(r=>setTimeout(r,200));}
+ if(!window.__tok){alert('Not logged in — open Driver Shifts, click a day tab, and re-run.');return}
+ const H={'X-Access-Token':window.__tok,'Accept':'application/json','Content-Type':'application/json'};
+ const mon=prompt('Week MONDAY (MM/DD/YYYY):');if(!mon)return;const mm=mon.split('/');const d0=new Date(+mm[2],+mm[0]-1,+mm[1]);
+ const dates=[];for(let i=0;i<6;i++){const d=new Date(d0);d.setDate(d0.getDate()+i);const p=n=>String(n).padStart(2,'0');dates.push(p(d.getMonth()+1)+'/'+p(d.getDate())+'/'+d.getFullYear())}
+ const hav=(a,b)=>{const R=6371000,r=x=>x*Math.PI/180,dl=r(b[0]-a[0]),dn=r(b[1]-a[1]),s=Math.sin(dl/2)**2+Math.cos(r(a[0]))*Math.cos(r(b[0]))*Math.sin(dn/2)**2;return 2*R*Math.asin(Math.sqrt(s))};
+ const sec=s=>{const m=s.match(/(\\d+)\\/(\\d+)\\/(\\d+) (\\d+):(\\d+):(\\d+)/);return new Date(+m[3],+m[1]-1,+m[2],+m[4],+m[5],+m[6]).getTime()/1000};
+ const add=(s,mi)=>{const x=s.match(/(\\d+)\\/(\\d+)\\/(\\d+) (\\d+):(\\d+):(\\d+)/);const d=new Date(+x[3],+x[1]-1,+x[2],+x[4],+x[5],+x[6]);d.setMinutes(d.getMinutes()+mi);const p=n=>String(n).padStart(2,'0');return p(d.getMonth()+1)+'/'+p(d.getDate())+'/'+d.getFullYear()+' '+p(d.getHours())+':'+p(d.getMinutes())+':'+p(d.getSeconds())};
+ const gj=(u,o)=>fetch(u,o).then(r=>r.json());
+ const pts=(rt,l,of)=>gj(BASE+'/routes/route_points/',{method:'POST',headers:H,body:JSON.stringify({route:rt,limit:l,offset:of})});
+ const key=fn=>{if(OMIT.some(n=>fn.indexOf(n)>=0))return'';for(const f in KM)if(fn.includes(f))return KM[f];return''};
+ async function end(rt,b){const N=((await pts(rt,1,0)).count)||0;if(!N)return{actualEnd:null,method:'NoGPS',finalDistMi:null};
+  let doS=null;try{const ev=await gj(BASE+'/routes/route_orders_locations/',{method:'POST',headers:H,body:JSON.stringify({route:rt})});const c=(Array.isArray(ev)?ev:[]).filter(e=>e.kind==='Completed'&&e.location);if(c.length)doS=sec(c[c.length-1].time_str)}catch(e){}
+  const lo=Math.floor((N-1)/500)*500,lp=(await pts(rt,500,lo)).points||[];if(!lp.length)return{actualEnd:null,method:'NoGPS',finalDistMi:null};
+  const fin=[+lp[lp.length-1].lat,+lp[lp.length-1].lng];
+  if(b&&doS!=null){const fp=(await pts(rt,500,0)).points||lp,T0=sec(fp[0].timestamp),Tl=sec(lp[lp.length-1].timestamp),rate=(Tl-T0)/Math.max(N-1,1);let off=Math.max(0,Math.floor(((doS-T0)/rate-500)/500)*500),g=0,arr=null;while(off<=lo&&g<22){const pg=(await pts(rt,500,off)).points||[];for(const p of pg){if(sec(p.timestamp)>=doS&&hav(b,[+p.lat,+p.lng])<=322){arr=p.timestamp;break}}if(arr)break;off+=500;g++}if(arr)return{actualEnd:add(arr,2),method:'base-arrival',finalDistMi:+(hav(b,fin)/1609.34).toFixed(2)}}
+  let off=lo,g=0,arr=lp[lp.length-1].timestamp;while(off>=0&&g<16){const pg=(await pts(rt,500,off)).points||[];let t=-1;for(let i=pg.length-1;i>=0;i--){if(hav(fin,[+pg[i].lat,+pg[i].lng])>50){t=i;break}}if(t===-1){if(pg.length)arr=pg[0].timestamp;off-=500;g++;continue}arr=(t+1<pg.length)?pg[t+1].timestamp:arr;break}
+  return{actualEnd:add(arr,2),method:b?'no-base>last-stop':'last-stop',finalDistMi:b?+(hav(b,fin)/1609.34).toFixed(2):null}}
+ const data=[];let n=0;
+ for(const date of dates){const js=await gj(BASE+'/routes/route/?start='+date+'&limit=300&offset=0',{headers:H});
+  for(const r of (js.results||[])){const k=key(((r.driver_detail&&r.driver_detail.full_name)||'').toLowerCase());if(!k)continue;n++;let e;try{e=await end(r.id,D[k])}catch(x){e={actualEnd:null,method:'NoGPS',finalDistMi:null}}data.push({driver:k,date:date.slice(0,5),shift:r.id,actualEnd:e.actualEnd,method:e.method,finalDistMi:e.finalDistMi})}}
+ const payload=JSON.stringify({week:dates[0]+'..'+dates[5],generatedAt:new Date().toISOString(),data});
+ try{await navigator.clipboard.writeText(payload);alert('Copied GPS for '+n+' shifts. Paste into the payroll tool, box 3.')}catch(e){console.log(payload);alert('Clipboard blocked — JSON printed in console; copy it.')}
+})();`;
+document.getElementById('collectorCode').textContent=COLLECTOR;
+function copyCollector(){navigator.clipboard.writeText(COLLECTOR).then(()=>document.getElementById('colMsg').innerHTML='<span class=ok>✓ copied — paste into the RouteGenie console</span>');}
+</script>
+</body>
+</html>
