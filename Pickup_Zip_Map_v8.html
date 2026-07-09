@@ -32,7 +32,7 @@
   .leaflet-tooltip.z{font-size:12px;line-height:1.4;}
   .zipcode{font-size:10.5px;font-weight:700;color:#173d28;text-align:center;white-space:nowrap;text-shadow:0 0 2px #fff,0 0 2px #fff,0 0 3px #fff,0 0 3px #fff;pointer-events:none;}
   @media (max-width:760px){#wrap{flex-direction:column;height:auto;}#map{flex:none;width:100%;height:62vh;min-height:340px;}#side{width:100%;border-left:none;border-top:1px solid #e5e7eb;}#sidetbl{overflow:visible;}}
-</style></head><body>
+.pinpanel{max-width:210px}.pcbtn{border:1px solid #cbd5e1;background:#fff;color:#475569;font-size:11.5px;font-weight:600;padding:3px 8px;border-radius:6px;cursor:pointer}.pcbtn.on{background:#1f4e78;border-color:#1f4e78;color:#fff}#pcRed.on{background:#e11d1d;border-color:#e11d1d;color:#fff}#pcBlue.on{background:#1e6fe0;border-color:#1e6fe0;color:#fff}#pinlabel{border:1px solid #cbd5e1;border-radius:6px;padding:3px 6px;font-size:12px;width:150px}.mmrpin{background:none;border:none}.mmrpin svg{filter:drop-shadow(0 1px 1px rgba(0,0,0,.3))}</style></head><body>
 <div id="wrap">
   <div id="map"></div>
   <div id="side">
@@ -69,6 +69,25 @@ const usd2=v=>'$'+v.toLocaleString('en-US',{minimumFractionDigits:2,maximumFract
 const sgn=v=>v>=0?usd(v):'-'+usd(-v);
 const map=L.map('map',{zoomControl:true}).setView([27.95,-82.55],10);
 L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',{attribution:'&copy; OpenStreetMap &copy; CARTO',subdomains:'abcd',maxZoom:19}).addTo(map);
+let addMode=false,pinColor='red',pins=[];
+function pinIcon(color){var fill=color==='blue'?'#1e6fe0':'#e11d1d';return L.divIcon({className:'mmrpin',iconSize:[26,38],iconAnchor:[13,37],popupAnchor:[0,-34],tooltipAnchor:[0,-30],html:'<svg width="26" height="38" viewBox="0 0 26 38"><path d="M13 0C6 0 0.5 5.5 0.5 12.5 0.5 22 13 38 13 38S25.5 22 25.5 12.5C25.5 5.5 20 0 13 0z" fill="'+fill+'" stroke="#fff" stroke-width="1.5"/><circle cx="13" cy="12.5" r="4.8" fill="#fff"/></svg>'});}
+function escHtml(s){return (s+'').replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
+function addPin(lat,lng,color,label){var m=L.marker([lat,lng],{icon:pinIcon(color)});m.bindTooltip(escHtml(label),{direction:'top'});var rec={lat:lat,lng:lng,color:color,label:label,marker:m};m.bindPopup('<b>'+escHtml(label)+'</b><br><a href="#" class="rmpin">Remove</a>');m.on('popupopen',function(ev){var a=ev.popup.getElement().querySelector('.rmpin');if(a)a.onclick=function(x){x.preventDefault();map.removeLayer(m);pins=pins.filter(function(p){return p!==rec;});savePins();};});m.addTo(map);pins.push(rec);return rec;}
+function dropPin(ll){var el=document.getElementById('pinlabel');var label=(el&&el.value.trim())||'Pin';addPin(ll.lat,ll.lng,pinColor,label);savePins();}
+function savePins(){try{localStorage.setItem('mmr_map_pins',JSON.stringify(pins.map(function(p){return {lat:p.lat,lng:p.lng,color:p.color,label:p.label};})));}catch(e){}}
+function loadPins(){try{JSON.parse(localStorage.getItem('mmr_map_pins')||'[]').forEach(function(p){addPin(p.lat,p.lng,p.color,p.label);});}catch(e){}}
+function setAddMode(on){addMode=on;var b=document.getElementById('addpinbtn');if(b){b.classList.toggle('on',on);b.textContent=on?'Click map...':'Add pin';}map.getContainer().style.cursor=on?'crosshair':'';var hh=document.getElementById('pinhint');if(hh)hh.textContent=on?'Click the map to drop pins; click Add pin again to stop.':'';}
+function setPinColor(c){pinColor=c;var r=document.getElementById('pcRed'),bl=document.getElementById('pcBlue');if(r)r.classList.toggle('on',c==='red');if(bl)bl.classList.toggle('on',c==='blue');}
+var pinCtl=L.control({position:'topright'});
+pinCtl.onAdd=function(){var d=L.DomUtil.create('div','legend pinpanel');d.innerHTML='<b>Place pins</b><div style="margin:4px 0 3px">Color: <button type="button" id="pcRed" class="pcbtn on">Red</button> <button type="button" id="pcBlue" class="pcbtn">Blue</button></div><input id="pinlabel" placeholder="Pin label" maxlength="60"/><div style="margin-top:5px"><button type="button" id="addpinbtn" class="pcbtn">Add pin</button> <button type="button" id="clearpins" class="pcbtn">Clear</button></div><div id="pinhint" style="font-size:11px;color:#6b7280;margin-top:3px"></div>';L.DomEvent.disableClickPropagation(d);L.DomEvent.disableScrollPropagation(d);return d;};
+pinCtl.addTo(map);
+document.getElementById('pcRed').onclick=function(){setPinColor('red');};
+document.getElementById('pcBlue').onclick=function(){setPinColor('blue');};
+document.getElementById('addpinbtn').onclick=function(){setAddMode(!addMode);};
+document.getElementById('clearpins').onclick=function(){if(pins.length&&confirm('Remove all placed pins?')){pins.forEach(function(p){map.removeLayer(p.marker);});pins=[];savePins();}};
+map.on('click',function(e){if(addMode)dropPin(e.latlng);});
+loadPins();
+
 const layersByZip={}; const labelLayer=L.layerGroup().addTo(map); let activeZip=null;
 function styleFor(z){const c=shade(z); return c?{weight:0.8,color:"#3f6b52",fillColor:c,fillOpacity:0.80}:{weight:0.6,color:"#d0d0d0",fillColor:"#ededed",fillOpacity:0.35};}
 function tipHtml(z){const d=DATA[z];const pc=d.profit>=0?'#0b6b33':'#b91c1c';const head=metric==='profit'
@@ -115,7 +134,7 @@ fetch("https://raw.githubusercontent.com/OpenDataDE/State-zip-code-GeoJSON/maste
  .then(gj=>{const want=new Set(Object.keys(DATA));const feats=gj.features.filter(f=>want.has(f.properties.ZCTA5CE10));
     L.geoJSON(feats,{style:f=>styleFor(f.properties.ZCTA5CE10),onEachFeature:(f,lyr)=>{const z=f.properties.ZCTA5CE10;layersByZip[z]=lyr;
       lyr.bindTooltip(()=>tipHtml(z),{className:'z',sticky:true});
-      lyr.on('click',()=>selectZip(z));
+      lyr.on('click',(e)=>{if(addMode){dropPin(e.latlng);L.DomEvent.stop(e);}else selectZip(z);});
       lyr.on('mouseover',()=>{if(z!==activeZip)lyr.setStyle({weight:2.5,color:'#000'});});
       lyr.on('mouseout',()=>{if(z!==activeZip)lyr.setStyle(styleFor(z));});
       const c=lyr.getBounds().getCenter();
