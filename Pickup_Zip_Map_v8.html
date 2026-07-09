@@ -32,7 +32,7 @@
   .leaflet-tooltip.z{font-size:12px;line-height:1.4;}
   .zipcode{font-size:10.5px;font-weight:700;color:#173d28;text-align:center;white-space:nowrap;text-shadow:0 0 2px #fff,0 0 2px #fff,0 0 3px #fff,0 0 3px #fff;pointer-events:none;}
   @media (max-width:760px){#wrap{flex-direction:column;height:auto;}#map{flex:none;width:100%;height:62vh;min-height:340px;}#side{width:100%;border-left:none;border-top:1px solid #e5e7eb;}#sidetbl{overflow:visible;}}
-.pinpanel{max-width:210px}.pcbtn{border:1px solid #cbd5e1;background:#fff;color:#475569;font-size:11.5px;font-weight:600;padding:3px 8px;border-radius:6px;cursor:pointer}.pcbtn.on{background:#1f4e78;border-color:#1f4e78;color:#fff}#pcRed.on{background:#e11d1d;border-color:#e11d1d;color:#fff}#pcBlue.on{background:#1e6fe0;border-color:#1e6fe0;color:#fff}#pinlabel{border:1px solid #cbd5e1;border-radius:6px;padding:3px 6px;font-size:12px;width:150px}.mmrpin{background:none;border:none}.mmrpin svg{filter:drop-shadow(0 1px 1px rgba(0,0,0,.3))}</style></head><body>
+.pinpanel{max-width:210px}.pcbtn{border:1px solid #cbd5e1;background:#fff;color:#475569;font-size:11.5px;font-weight:600;padding:3px 8px;border-radius:6px;cursor:pointer}.pcbtn.on{background:#1f4e78;border-color:#1f4e78;color:#fff}#pcRed.on{background:#e11d1d;border-color:#e11d1d;color:#fff}#pcBlue.on{background:#1e6fe0;border-color:#1e6fe0;color:#fff}#pinlabel{border:1px solid #cbd5e1;border-radius:6px;padding:3px 6px;font-size:12px;width:150px}.mmrpin{background:none;border:none}.mmrpin svg{filter:drop-shadow(0 1px 1px rgba(0,0,0,.3))}#facsearch{margin:8px 0 4px}#facq{width:100%;box-sizing:border-box;border:1px solid #cbd5e1;border-radius:7px;padding:7px 9px;font-size:13px}#facresults{max-height:240px;overflow:auto;margin-top:6px}.facitem{padding:7px 9px;border:1px solid #eee;border-radius:7px;margin-bottom:6px;cursor:pointer;font-size:12.5px;line-height:1.35}.facitem:hover{background:#eef6ff;border-color:#bfdbfe}.facitem b{display:block;color:#1f2937}.facitem span{color:#6b7280;font-size:11.5px}.facnote{font-size:11.5px;color:#9ca3af;padding:5px 2px}</style></head><body>
 <div id="wrap">
   <div id="map"></div>
   <div id="side">
@@ -47,7 +47,7 @@
         <button class="mbtn" data-m="profit" onclick="setMetric('profit')">Profitability</button>
       </div>
       <div id="status">Loading zip-code boundaries…</div>
-      <p class="hint" id="hint">Darker green = more. Toggle a mode above. Hover a zip or click a row for details.</p>
+      <p class="hint" id="hint">Darker green = more. Toggle a mode above. Hover a zip or click a row for details.</p><div id="facsearch"><div style="font-weight:600;font-size:12px;margin-bottom:3px">Find a facility</div><input id="facq" placeholder="Name or address (e.g. dialysis Clearwater)"/><button id="facbtn" class="mbtn" style="margin-top:5px">Search</button><div id="facresults"></div></div>
     </div>
     <div id="sidetbl"><table id="tbl"><thead></thead><tbody></tbody></table></div>
   </div>
@@ -149,4 +149,12 @@ lgctl.onAdd=function(){legendDiv=L.DomUtil.create('div','legend');return legendD
 function fixSize(){setTimeout(()=>map.invalidateSize(),200);}
 window.addEventListener('resize',fixSize);window.addEventListener('orientationchange',fixSize);setTimeout(fixSize,400);
 buildTable();
+
+var facMarker=null;
+function facIcon(){return L.divIcon({className:'mmrpin',iconSize:[28,40],iconAnchor:[14,39],popupAnchor:[0,-36],html:'<svg width="28" height="40" viewBox="0 0 28 40"><path d="M14 0C6.3 0 0 6.3 0 14 0 24 14 40 14 40S28 24 28 14C28 6.3 21.7 0 14 0z" fill="#f59e0b" stroke="#fff" stroke-width="1.6"/><circle cx="14" cy="14" r="5" fill="#fff"/></svg>'});}
+function facShow(list){var el=document.getElementById('facresults');if(!el)return;if(list===null){el.innerHTML='';return;}if(!list.length){el.innerHTML='<div class="facnote">No matches. Try adding a city or ZIP.</div>';return;}el.innerHTML=list.map(function(r,i){var nm=r.name||(r.display_name||'').split(',')[0];var addr=(r.display_name||'').split(',').slice(1).join(',').trim();return '<div class="facitem" data-i="'+i+'"><b>'+escHtml(nm)+'</b><span>'+escHtml(addr)+'</span></div>';}).join('');Array.prototype.forEach.call(el.querySelectorAll('.facitem'),function(it){it.onclick=function(){facSelect(list[+it.dataset.i]);};});}
+function facSelect(r){var lat=parseFloat(r.lat),lon=parseFloat(r.lon);if(isNaN(lat)||isNaN(lon))return;if(facMarker)map.removeLayer(facMarker);facMarker=L.marker([lat,lon],{icon:facIcon()}).addTo(map);var nm=r.name||(r.display_name||'').split(',')[0];facMarker.bindPopup('<b>'+escHtml(nm)+'</b><br>'+escHtml(r.display_name||'')).openPopup();map.setView([lat,lon],15);}
+function facRun(){var q=(document.getElementById('facq').value||'').trim();var el=document.getElementById('facresults');if(!q){facShow(null);return;}el.innerHTML='<div class="facnote">Searching...</div>';var b=map.getBounds();var vb=b.getWest()+','+b.getNorth()+','+b.getEast()+','+b.getSouth();var url='https://nominatim.openstreetmap.org/search?format=jsonv2&limit=8&addressdetails=1&countrycodes=us&viewbox='+encodeURIComponent(vb)+'&q='+encodeURIComponent(q);fetch(url,{headers:{'Accept':'application/json'}}).then(function(r){return r.json();}).then(function(j){facShow(j);}).catch(function(e){el.innerHTML='<div class="facnote">Search failed ('+escHtml(e.message)+'). Try again.</div>';});}
+(function(){var btn=document.getElementById('facbtn'),q=document.getElementById('facq');if(btn)btn.onclick=facRun;if(q)q.addEventListener('keydown',function(e){if(e.key==='Enter'){e.preventDefault();facRun();}});})();
+
 </script></body></html>
