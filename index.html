@@ -154,8 +154,9 @@ table.sa td.cell.drag{opacity:.5}
 </div>
 
 <div class="wrap" id="map" style="display:none">
- <iframe class="mapframe" src="https://mango8705.github.io/MMR/Pickup_Zip_Map_v8.html?v=12" title="MMR Pickup Zip Map"></iframe>
- <p class="note">Live pickup-by-zip map (broker trips, Mar 16 – Jun 15, 2026), embedded from the existing MMR map page. Open full map: <a href="https://mango8705.github.io/MMR/Pickup_Zip_Map_v8.html?v=12" target="_blank">https://mango8705.github.io/MMR/Pickup_Zip_Map_v8.html?v=12</a></p></div>
+ <div style="margin:0 0 10px;padding:10px 12px;background:#eef2ff;border:1px solid #c7d2fe;border-radius:8px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap"><span style="font-size:13px;color:#3730a3"><b>New — Business Development targeting map:</b> hospitals, hospices &amp; surgery centers across Pasco &amp; Pinellas, with category toggles and prospect pins.</span><a href="https://mango8705.github.io/MMR/BD_Targeting_Map_v1.html?v=1" target="_blank" style="background:#4f46e5;color:#fff;text-decoration:none;font-weight:600;font-size:13px;padding:7px 14px;border-radius:7px;white-space:nowrap">Open BD Targeting Map &#8599;</a></div>
+ <iframe class="mapframe" src="https://mango8705.github.io/MMR/Pickup_Zip_Map_v8.html?v=13" title="MMR Pickup Zip Map"></iframe>
+ <p class="note">Live pickup-by-zip map (broker trips, Mar 16 – Jun 15, 2026), embedded from the existing MMR map page. Open full map: <a href="https://mango8705.github.io/MMR/Pickup_Zip_Map_v8.html?v=13" target="_blank">https://mango8705.github.io/MMR/Pickup_Zip_Map_v8.html?v=13</a></p></div>
 <div class="wrap" id="pay" style="display:none">
  <iframe class="mapframe" src="https://mango8705.github.io/MMR/payroll.html?v=1" title="MMR Payroll Reconciliation"></iframe>
  <p class="note">Weekly payroll reconciliation: upload the payroll report, paste the dispatch start times and the RouteGenie GPS JSON, and it produces the clock-vs-GPS deviation report. Open full tool: <a href="https://mango8705.github.io/MMR/payroll.html?v=1" target="_blank">payroll.html</a></p></div>
@@ -469,8 +470,4 @@ function sOptimize(){sPush();
 function sReset(){sModel=sBuild(sDay);sHold=[];sOrigNet=sDayNet();sClearHist();sRender();}
 function sSetDay(day){sDay=day;document.querySelectorAll('#sgrain button').forEach(b=>b.classList.toggle('active',b.dataset.d===day));sModel=sBuild(day);sHold=[];sOrigNet=sDayNet();sClearHist();sRender();}
 function sInit(){const seg=document.getElementById('sgrain');seg.innerHTML=SHIFT.days.map((d,i)=>'<button data-d="'+d+'" class="'+(i===0?'active':'')+'" onclick="sSetDay(\''+d+'\')">'+d+'</button>').join('');sModel=sBuild(sDay);sHold=[];sOrigNet=sDayNet();sClearHist();sRender();}
-function showTab(t){['fin','ue','brk','prod','shift','map','pay'].forEach(v=>document.getElementById(v).style.display=v===t?'':'none');document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('active',x.dataset.tab===t));if(t==='brk'&&!window._bi){window._bi=1;bSetGrain('total');}if(t==='ue'&&!window._ui){window._ui=1;ueSetGrain('total');}if(t==='prod'&&!window._pi){window._pi=1;pRender();}if(t==='shift'&&!window._si){window._si=1;sInit();}}
-function doRefresh(btn){var a=document.querySelector('.tab.active');a=a?a.dataset.tab:'fin';if(btn){btn.textContent='\u21bb Refreshing\u2026';}if(a==='map'){var f=document.querySelector('.mapframe');var b=f.src.split('?')[0];f.src=b+'?t='+Date.now();setTimeout(function(){if(btn)btn.textContent='\u21bb Refresh';},900);}else{location.href=location.pathname+'?t='+Date.now()+'#'+a;}}
-setGrain('total');
-(function(){var h=(location.hash||'').replace('#','');if(['fin','ue','brk','map'].indexOf(h)>=0)showTab(h);})();
-</script></body></html>
+function showTab(t){['fin','ue','brk','prod','shift','map','pay'].forEach(v=>document.getElementById(v).style.display=v===t?'':'none');document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('active',x.dataset.tab===t));if(t==='brk'&&!window._bi){window._bi=1;bSetGrain('total');}if(t==='ue'&&!window._ui

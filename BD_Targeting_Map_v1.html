@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>MMR Business Development — Targeting Map</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<style>
+  html,body{margin:0;height:100%;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#1f2937;}
+  #wrap{display:flex;height:100vh;}
+  #map{flex:1;height:100%;}
+  #side{width:400px;display:flex;flex-direction:column;border-left:1px solid #e5e7eb;background:#fafafa;}
+  #sidehead{padding:14px 16px 6px;}
+  #sidelist{overflow:auto;padding:0 14px 16px;}
+  h1{font-size:16px;margin:0 0 4px;}
+  .sub{font-size:12px;color:#6b7280;margin:0 0 8px;}
+  .faccat{margin:10px 0 3px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;color:#374151;display:flex;align-items:center;gap:7px;}
+  .facrow{padding:5px 7px;border:1px solid #eee;border-radius:6px;margin-bottom:4px;cursor:pointer;font-size:12.5px;line-height:1.3;background:#fff;}
+  .facrow:hover{background:#eef6ff;border-color:#bfdbfe;}
+  .facrow b{display:block;color:#1f2937;font-weight:600;}
+  .facrow span{color:#6b7280;font-size:11px;}
+  .badge{display:inline-flex;width:16px;height:16px;border-radius:4px;flex:0 0 16px;}
+  .legend{line-height:18px;font-size:12px;background:#fff;padding:8px 10px;border-radius:7px;box-shadow:0 1px 5px rgba(0,0,0,.25);}
+  .factoggle b{font-size:12.5px;}
+  .factoggle label{display:flex;align-items:center;gap:7px;margin-top:5px;cursor:pointer;font-size:12.5px;}
+  .factoggle input{margin:0;}
+  .factoggle .cnt{color:#6b7280;font-size:11px;margin-left:auto;}
+  .mmrbadge{background:none;border:none;}
+  .mmrbadge svg{filter:drop-shadow(0 1px 1.5px rgba(0,0,0,.35));}
+  .mmrpin{background:none;border:none;}
+  .mmrpin svg{filter:drop-shadow(0 1px 1px rgba(0,0,0,.3));}
+  .zipnum{font-size:10px;font-weight:700;color:#334155;text-align:center;white-space:nowrap;text-shadow:0 0 2px #fff,0 0 2px #fff,0 0 3px #fff;pointer-events:none;opacity:.75;}
+  .pinpanel{max-width:210px;}
+  .pcbtn{border:1px solid #cbd5e1;background:#fff;color:#475569;font-size:11.5px;font-weight:600;padding:3px 8px;border-radius:6px;cursor:pointer;}
+  .pcbtn.on{background:#1f4e78;border-color:#1f4e78;color:#fff;}
+  #pcRed.on{background:#e11d1d;border-color:#e11d1d;color:#fff;}
+  #pcBlue.on{background:#1e6fe0;border-color:#1e6fe0;color:#fff;}
+  #pinlabel{border:1px solid #cbd5e1;border-radius:6px;padding:3px 6px;font-size:12px;width:150px;}
+  #facsearch{margin:8px 0 4px;}
+  #facq{width:100%;box-sizing:border-box;border:1px solid #cbd5e1;border-radius:7px;padding:7px 9px;font-size:13px;}
+  #facresults{max-height:210px;overflow:auto;margin-top:6px;}
+  .facitem{padding:7px 9px;border:1px solid #eee;border-radius:7px;margin-bottom:6px;cursor:pointer;font-size:12.5px;line-height:1.35;background:#fff;}
+  .facitem:hover{background:#eef6ff;border-color:#bfdbfe;}
+  .facitem b{display:block;color:#1f2937;}
+  .facitem span{color:#6b7280;font-size:11.5px;}
+  .facnote{font-size:11.5px;color:#9ca3af;padding:5px 2px;}
+  .popcol a{font-weight:700;text-decoration:none;}
+  @media (max-width:760px){#wrap{flex-direction:column;height:auto;}#map{flex:none;width:100%;height:60vh;min-height:340px;}#side{width:100%;border-left:none;border-top:1px solid #e5e7eb;}#sidelist{overflow:visible;}}
+</style></head><body>
+<div id="wrap">
+  <div id="map"></div>
+  <div id="side">
+    <div id="sidehead">
+      <h1>Business Development — Targeting Map</h1>
+      <p class="sub">MMR service area (Pasco &amp; Pinellas). Hospitals, hospices &amp; surgery centers as prospecting targets. Toggle categories on the map; click a name to zoom to it.</p>
+      <div id="facsearch"><div style="font-weight:600;font-size:12px;margin-bottom:3px">Find a facility or address</div><input id="facq" placeholder="Facility name or exact address"/><button id="facbtn" class="pcbtn" style="margin-top:5px">Search</button><div id="facscope" class="facnote" style="margin-top:5px"></div><div id="facresults"></div></div>
+    </div>
+    <div id="sidelist"></div>
+  </div>
+</div>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+// ---- Facility dataset (compiled from Google Places, Pasco & Pinellas) ----
+// [category, name, lat, lon, zip, city]   category: H=Hospital, P=Hospice, S=Surgery center
+var FAC=[
+["H","AdventHealth Connerton",28.29525,-82.48997,"34637","Land O' Lakes"],
+["H","AdventHealth Dade City",28.19032,-82.35239,"33544","Dade City"],
+["H","AdventHealth North Pinellas",28.13296,-82.75751,"34689","Tarpon Springs"],
+["H","AdventHealth Wesley Chapel",28.19530,-82.35128,"33544","Wesley Chapel"],
+["H","AdventHealth Zephyrhills",28.26152,-82.18506,"33541","Zephyrhills"],
+["H","Bay Pines VA Medical Center",27.81116,-82.77930,"33744","Bay Pines"],
+["H","BayCare Alliant Hospital",28.01366,-82.78299,"34698","Dunedin"],
+["H","BayCare Hospital Wesley Chapel",28.22318,-82.35576,"33544","Wesley Chapel"],
+["H","Encompass Health Rehabilitation Hospital of Largo",27.92544,-82.79720,"33770","Largo"],
+["H","Encompass Health Rehabilitation Hospital of St. Petersburg",27.78180,-82.71714,"33710","St. Petersburg"],
+["H","HCA Florida Bayonet Point Hospital",28.36129,-82.68762,"34667","Hudson"],
+["H","HCA Florida Largo Hospital",27.91502,-82.80364,"33770","Largo"],
+["H","HCA Florida Largo West Hospital",27.89824,-82.82440,"33774","Largo"],
+["H","HCA Florida Northside Hospital",27.82580,-82.70235,"33709","St. Petersburg"],
+["H","HCA Florida Pasadena Hospital",27.75278,-82.74008,"33707","South Pasadena"],
+["H","HCA Florida St. Petersburg Hospital",27.80532,-82.72602,"33710","St. Petersburg"],
+["H","HCA Florida Trinity Hospital",28.20390,-82.65976,"34655","Trinity"],
+["H","Johns Hopkins All Children's Hospital",27.76481,-82.64113,"33701","St. Petersburg"],
+["H","Kindred Hospital Bay Area - St. Petersburg",27.74084,-82.63975,"33705","St. Petersburg"],
+["H","Mease Countryside Hospital",28.03927,-82.70704,"34695","Safety Harbor"],
+["H","Mease Dunedin Hospital",28.01305,-82.78291,"34698","Dunedin"],
+["H","Morton Plant Hospital",27.95295,-82.80371,"33756","Clearwater"],
+["H","Morton Plant North Bay Hospital",28.25400,-82.71445,"34652","New Port Richey"],
+["H","Orlando Health Bayfront Hospital",27.76360,-82.64207,"33701","St. Petersburg"],
+["H","Pinellas County Rehabilitation Hospital",27.85103,-82.67732,"33782","Pinellas Park"],
+["H","St. Anthony's Hospital",27.77866,-82.65004,"33705","St. Petersburg"],
+["H","Starkey Ranch ER & Hospital",28.19152,-82.61506,"33556","Odessa"],
+["P","AccentCare Hospice",27.93301,-82.72915,"33764","Clearwater"],
+["P","AccentCare Inpatient Hospice Center at Mease Manor",28.01420,-82.78008,"34698","Dunedin"],
+["P","Dr. Jay Weil Center for Hospice Care",28.23496,-82.66966,"34653","New Port Richey"],
+["P","Hernando-Pasco Hospice",28.25659,-82.69964,"34653","New Port Richey"],
+["P","Hernando-Pasco Hospice Inc",28.23327,-82.17671,"33542","Zephyrhills"],
+["P","Life's Treasures Hernando Pasco Hospice",28.22884,-82.20388,"33541","Zephyrhills"],
+["P","Marliere Hospice House",28.25623,-82.70070,"34653","New Port Richey"],
+["P","Suncoast Hospice",27.77009,-82.69236,"33711","St. Petersburg"],
+["P","Suncoast Hospice Care Center Mid-Pinellas",27.86415,-82.73172,"33782","Pinellas Park"],
+["P","Suncoast Hospice Care Center North Pinellas",28.06874,-82.73568,"34684","Palm Harbor"],
+["P","Suncoast Hospice Care Center South Pinellas",27.76348,-82.64201,"33701","St. Petersburg"],
+["P","The Rucki Hospice Care Center",28.24138,-82.21218,"33541","Zephyrhills"],
+["P","VITAS Healthcare Inpatient Hospice Care",27.89549,-82.82393,"33774","Largo"],
+["S","Amy's Surgery Center",28.18987,-82.43304,"34639","Land O' Lakes"],
+["S","Bardmoor Surgery Center",27.87375,-82.76037,"33777","Largo"],
+["S","Bay Area Endoscopy and Surgery Center",27.82400,-82.69940,"33709","St. Petersburg"],
+["S","BayCare Surgery Center (Trinity)",28.18821,-82.67665,"34655","Trinity"],
+["S","Bayonet Point Surgery & Endoscopy Center",28.36227,-82.68608,"34667","Hudson"],
+["S","Bayside Center for Plastic and Reconstructive Surgery",28.19366,-82.52034,"33558","Lutz"],
+["S","C P S Surgery Center",27.77005,-82.63615,"33701","St. Petersburg"],
+["S","C-Med Ambulatory Surgery Center",27.96822,-82.74470,"33765","Clearwater"],
+["S","Carillon Surgery Center",27.89298,-82.66719,"33716","St. Petersburg"],
+["S","Center for Special Surgery",27.81437,-82.63903,"33703","St. Petersburg"],
+["S","Comprehensive Surgery Center",27.96139,-82.75524,"33765","Clearwater"],
+["S","Countryside Surgery Center",28.04098,-82.70847,"33761","Clearwater"],
+["S","Florida Medical Clinic Orlando Health - Ambulatory Surgery Center",28.25434,-82.18547,"33542","Zephyrhills"],
+["S","Largo Ambulatory Surgery Center",27.91560,-82.80133,"33770","Largo"],
+["S","Longleaf Surgery Center",28.20272,-82.64323,"34655","New Port Richey"],
+["S","Mease Countryside Ambulatory Surgery",27.95387,-82.80477,"33756","Clearwater"],
+["S","Mosaic Maxillofacial Surgical Arts and Implant Centers",28.25585,-82.71581,"34652","New Port Richey"],
+["S","New Port Richey Surgery Center",28.20438,-82.65961,"34655","Trinity"],
+["S","New Tampa Surgery Center",28.19109,-82.37374,"33544","Wesley Chapel"],
+["S","North Pinellas Surgery Center",28.04808,-82.74221,"34698","Dunedin"],
+["S","Orthopaedic Surgery Center of Clearwater",27.95393,-82.80215,"33756","Clearwater"],
+["S","Pasadena Surgery Center",27.77025,-82.73467,"33707","South Pasadena"],
+["S","Pediatric Surgery Centers",28.19419,-82.58225,"33556","Odessa"],
+["S","Physicians Surgery Center",27.77962,-82.65443,"33705","St. Petersburg"],
+["S","Safety Harbor Surgery Center",28.04133,-82.71014,"33761","Safety Harbor"],
+["S","Same Day Surgery Center",28.25563,-82.18981,"33542","Zephyrhills"],
+["S","Seven Springs Surgery Center",28.18860,-82.69831,"34655","New Port Richey"],
+["S","Skyway Surgery Center",27.76452,-82.64245,"33701","St. Petersburg"],
+["S","St. Michael's Surgery Center",27.91696,-82.79877,"33770","Largo"],
+["S","Suncoast Specialty Surgery Center",28.22499,-82.73426,"34652","New Port Richey"],
+["S","Surgcenter Dunedin",28.01539,-82.78421,"34698","Dunedin"],
+["S","Surgcenter Pinellas",27.88484,-82.73022,"33773","Largo"],
+["S","Surgery Center of Florida",28.18909,-82.35701,"33544","Wesley Chapel"],
+["S","Surgery Center of Wesley Chapel",28.19108,-82.37469,"33544","Wesley Chapel"],
+["S","Tampa Bay Joint & Spine Surgery Center",28.00913,-82.73190,"33763","Clearwater"],
+["S","Tampa Bay Regional Surgery Center",27.87165,-82.74036,"33777","Largo"],
+["S","Tampa Bay Surgery Center",28.20816,-82.52810,"34638","Land O' Lakes"],
+["S","West Bay Surgery Center",27.91608,-82.80301,"33770","Largo"],
+["S","West Park Ambulatory Surgery Center",27.84186,-82.72970,"33781","Pinellas Park"]
+];
+var CAT={H:{label:'Hospitals',color:'#dc2626'},P:{label:'Hospices',color:'#0d9488'},S:{label:'Surgery centers',color:'#4f46e5'}};
+var ZIPS=["33705","34689","33756","34698","33711","33782","33763","33714","33761","33701","33774","34684","33771","33781","33755","33712","33759","33709","33707","33773","33702","33710","33770","33765","33777","33713","33778","33760","33772","34683","33764","34695","34653","33716","33704","34685","34655","34652","33762","33776","33744","33703","34677","34668","34691","33715","34654","33708","33626","33556","33541","34690","34688","34667","33615","33635"];
+
+function escHtml(s){return (s+'').replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
+
+var map=L.map('map',{zoomControl:true}).setView([28.02,-82.62],9);
+L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',{attribution:'&copy; OpenStreetMap &copy; CARTO',subdomains:'abcd',maxZoom:19}).addTo(map);
+
+// ---------- Category badge icons (distinct symbol per type) ----------
+function glyph(cat){
+  if(cat==='H')return '<rect x="11" y="6.5" width="4" height="13" rx="1" fill="#fff"/><rect x="6.5" y="11" width="13" height="4" rx="1" fill="#fff"/>';
+  if(cat==='P')return '<path d="M13 19.6C13 19.6 5.6 15.1 5.6 9.9 5.6 7.6 7.4 6.3 9.3 6.3 10.9 6.3 12.3 7.3 13 8.7 13.7 7.3 15.1 6.3 16.7 6.3 18.6 6.3 20.4 7.6 20.4 9.9 20.4 15.1 13 19.6 13 19.6Z" fill="#fff"/>';
+  return '<path d="M6.8 19.4 L15.2 11 L18 13.8 L9.6 22.2 L6.8 22.2 Z" fill="#fff" transform="translate(0,-2.4)"/><path d="M15.8 10.4 L18.8 7.4 L20.6 9.2 L17.6 12.2 Z" fill="#fff" transform="translate(0,-2.4)"/>';
+}
+function facBadge(cat){var col=CAT[cat].color;return L.divIcon({className:'mmrbadge',iconSize:[26,26],iconAnchor:[13,13],popupAnchor:[0,-13],tooltipAnchor:[0,-13],html:'<svg width="26" height="26" viewBox="0 0 26 26"><rect x="1.5" y="1.5" width="23" height="23" rx="6.5" fill="'+col+'" stroke="#fff" stroke-width="1.6"/>'+glyph(cat)+'</svg>'});}
+function badgeMini(cat){var col=CAT[cat].color;return '<svg class="badge" viewBox="0 0 26 26" width="16" height="16"><rect x="1.5" y="1.5" width="23" height="23" rx="6.5" fill="'+col+'" stroke="#fff" stroke-width="1.6"/>'+glyph(cat)+'</svg>';}
+
+// ---------- Manual prospect pins (with color change) ----------
+var addMode=false,pinColor='red',pins=[];
+function pinIcon(color){var fill=color==='blue'?'#1e6fe0':(color==='orange'?'#f59e0b':'#e11d1d');return L.divIcon({className:'mmrpin',iconSize:[26,38],iconAnchor:[13,37],popupAnchor:[0,-34],tooltipAnchor:[0,-30],html:'<svg width="26" height="38" viewBox="0 0 26 38"><path d="M13 0C6 0 0.5 5.5 0.5 12.5 0.5 22 13 38 13 38S25.5 22 25.5 12.5C25.5 5.5 20 0 13 0z" fill="'+fill+'" stroke="#fff" stroke-width="1.5"/><circle cx="13" cy="12.5" r="4.8" fill="#fff"/></svg>'});}
+function pinPopupHtml(label){return '<b>'+escHtml(label)+'</b><br><span style="font-size:11px;color:#6b7280">Color:</span> <span class="popcol"><a href="#" class="pincol" data-c="red" style="color:#e11d1d">Red</a> &middot; <a href="#" class="pincol" data-c="blue" style="color:#1e6fe0">Blue</a> &middot; <a href="#" class="pincol" data-c="orange" style="color:#f59e0b">Orange</a></span><br><a href="#" class="rmpin" style="color:#6b7280">Remove</a>';}
+function addPin(lat,lng,color,label){var m=L.marker([lat,lng],{icon:pinIcon(color),draggable:true});m.bindTooltip(escHtml(label),{direction:'top'});var rec={lat:lat,lng:lng,color:color,label:label,marker:m};
+  m.bindPopup(pinPopupHtml(label));
+  m.on('popupopen',function(ev){var el=ev.popup.getElement();var a=el.querySelector('.rmpin');if(a)a.onclick=function(x){x.preventDefault();map.removeLayer(m);pins=pins.filter(function(p){return p!==rec;});savePins();};
+    Array.prototype.forEach.call(el.querySelectorAll('.pincol'),function(cl){cl.onclick=function(x){x.preventDefault();var c=cl.getAttribute('data-c');rec.color=c;m.setIcon(pinIcon(c));savePins();};});});
+  m.on('dragend',function(){var ll=m.getLatLng();rec.lat=ll.lat;rec.lng=ll.lng;savePins();});m.addTo(map);pins.push(rec);return rec;}
+function dropPin(ll){var el=document.getElementById('pinlabel');var label=(el&&el.value.trim())||'Prospect';addPin(ll.lat,ll.lng,pinColor,label);savePins();}
+function savePins(){try{localStorage.setItem('mmr_bd_pins',JSON.stringify(pins.map(function(p){return {lat:p.lat,lng:p.lng,color:p.color,label:p.label};})));}catch(e){}}
+function loadPins(){try{JSON.parse(localStorage.getItem('mmr_bd_pins')||'[]').forEach(function(p){addPin(p.lat,p.lng,p.color,p.label);});}catch(e){}}
+function setAddMode(on){addMode=on;var b=document.getElementById('addpinbtn');if(b){b.classList.toggle('on',on);b.textContent=on?'Click map...':'Add pin';}map.getContainer().style.cursor=on?'crosshair':'';var hh=document.getElementById('pinhint');if(hh)hh.textContent=on?'Click the map to drop pins; click Add pin again to stop.':'';}
+function setPinColor(c){pinColor=c;var r=document.getElementById('pcRed'),bl=document.getElementById('pcBlue');if(r)r.classList.toggle('on',c==='red');if(bl)bl.classList.toggle('on',c==='blue');}
+var pinCtl=L.control({position:'topright'});
+pinCtl.onAdd=function(){var d=L.DomUtil.create('div','legend pinpanel');d.innerHTML='<b>Add prospect pins</b><div style="margin:4px 0 3px">Color: <button type="button" id="pcRed" class="pcbtn on">Red</button> <button type="button" id="pcBlue" class="pcbtn">Blue</button></div><input id="pinlabel" placeholder="Pin label" maxlength="60"/><div style="margin-top:5px"><button type="button" id="addpinbtn" class="pcbtn">Add pin</button> <button type="button" id="clearpins" class="pcbtn">Clear</button></div><div id="pinhint" style="font-size:11px;color:#6b7280;margin-top:3px"></div>';L.DomEvent.disableClickPropagation(d);L.DomEvent.disableScrollPropagation(d);return d;};
+pinCtl.addTo(map);
+document.getElementById('pcRed').onclick=function(){setPinColor('red');};
+document.getElementById('pcBlue').onclick=function(){setPinColor('blue');};
+document.getElementById('addpinbtn').onclick=function(){setAddMode(!addMode);};
+document.getElementById('clearpins').onclick=function(){if(pins.length&&confirm('Remove all prospect pins?')){pins.forEach(function(p){map.removeLayer(p.marker);});pins=[];savePins();}};
+map.on('click',function(e){if(addMode)dropPin(e.latlng);});
+loadPins();
+
+// ---------- Facility category layers ----------
+var facLayers={H:L.layerGroup(),P:L.layerGroup(),S:L.layerGroup()};
+var facMarkers=[];
+function facPopup(f){return '<b>'+escHtml(f[1])+'</b><br><span style="color:#6b7280;font-size:11.5px">'+CAT[f[0]].label.replace(/s$/,'')+' &middot; '+escHtml(f[5])+' '+escHtml(f[4])+'</span><br><a href="#" class="fac2pin" style="color:#b45309;font-weight:600">\u{1F4CC} Add as prospect pin</a>';}
+FAC.forEach(function(f,i){var m=L.marker([f[2],f[3]],{icon:facBadge(f[0])});m.bindTooltip(escHtml(f[1]),{direction:'top'});m.bindPopup(facPopup(f));
+  m.on('popupopen',function(ev){var a=ev.popup.getElement().querySelector('.fac2pin');if(a)a.onclick=function(x){x.preventDefault();addPin(f[2],f[3],'red',f[1]);savePins();};});
+  m.addTo(facLayers[f[0]]);facMarkers[i]=m;});
+facLayers.H.addTo(map);facLayers.P.addTo(map);facLayers.S.addTo(map);
+
+// ---------- Category toggle + legend control ----------
+var togCtl=L.control({position:'topleft'});
+togCtl.onAdd=function(){var d=L.DomUtil.create('div','legend factoggle');var counts={H:0,P:0,S:0};FAC.forEach(function(f){counts[f[0]]++;});
+  var html='<b>Facilities</b>';['H','P','S'].forEach(function(c){html+='<label><input type="checkbox" data-c="'+c+'" checked>'+badgeMini(c)+'<span>'+CAT[c].label+'</span><span class="cnt">'+counts[c]+'</span></label>';});
+  d.innerHTML=html;L.DomEvent.disableClickPropagation(d);L.DomEvent.disableScrollPropagation(d);
+  Array.prototype.forEach.call(d.querySelectorAll('input'),function(inp){inp.onchange=function(){var c=inp.getAttribute('data-c');if(inp.checked)facLayers[c].addTo(map);else map.removeLayer(facLayers[c]);};});
+  return d;};
+togCtl.addTo(map);
+
+// ---------- Side-panel facility list ----------
+function flyToFac(i){var f=FAC[i];map.setView([f[2],f[3]],15);facMarkers[i].openPopup();}
+(function(){var el=document.getElementById('sidelist');var html='';['H','P','S'].forEach(function(c){var rows=FAC.map(function(f,i){return [f,i];}).filter(function(x){return x[0][0]===c;});
+  html+='<div class="faccat">'+badgeMini(c)+' '+CAT[c].label+' ('+rows.length+')</div>';
+  rows.forEach(function(x){html+='<div class="facrow" data-i="'+x[1]+'"><b>'+escHtml(x[0][1])+'</b><span>'+escHtml(x[0][5])+' &middot; '+escHtml(x[0][4])+'</span></div>';});});
+  el.innerHTML=html;Array.prototype.forEach.call(el.querySelectorAll('.facrow'),function(r){r.onclick=function(){flyToFac(+r.dataset.i);};});})();
+
+// ---------- Zip boundaries (thin gray, reference only) ----------
+var layersByZip={};var zipLabels=L.layerGroup().addTo(map);var activeZip=null;var serviceBounds=null;
+function zipStyle(){return {weight:1,color:'#94a3b8',opacity:0.75,fill:false};}
+function selectZip(z){var lyr=layersByZip[z];if(!lyr)return;if(activeZip&&layersByZip[activeZip])layersByZip[activeZip].setStyle(zipStyle());activeZip=z;lyr.setStyle({weight:3,color:'#1f4e78',opacity:1,fill:false});lyr.bringToFront();facScope();}
+fetch("https://raw.githubusercontent.com/OpenDataDE/State-zip-code-GeoJSON/master/fl_florida_zip_codes_geo.min.json")
+ .then(function(r){if(!r.ok)throw new Error(r.status);return r.json();})
+ .then(function(gj){var want=new Set(ZIPS);var feats=gj.features.filter(function(f){return want.has(f.properties.ZCTA5CE10);});
+   L.geoJSON(feats,{style:zipStyle,onEachFeature:function(f,lyr){var z=f.properties.ZCTA5CE10;layersByZip[z]=lyr;
+     lyr.on('click',function(e){if(addMode){dropPin(e.latlng);L.DomEvent.stop(e);}else selectZip(z);});
+     lyr.on('mouseover',function(){if(z!==activeZip)lyr.setStyle({weight:2,color:'#475569'});});
+     lyr.on('mouseout',function(){if(z!==activeZip)lyr.setStyle(zipStyle());});
+     L.marker(lyr.getBounds().getCenter(),{interactive:false,keyboard:false,icon:L.divIcon({className:'',html:'<div class="zipnum">'+z+'</div>',iconSize:[42,12],iconAnchor:[21,6]})}).addTo(zipLabels);}}).addTo(map);
+   var all=L.featureGroup(Object.values(layersByZip));if(all.getBounds().isValid())serviceBounds=all.getBounds();
+   function togZip(){var show=map.getZoom()>=12;zipLabels.eachLayer(function(l){var e=l.getElement&&l.getElement();if(e)e.style.display=show?'':'none';});}
+   map.on('zoomend',togZip);togZip();facScope();})
+ .catch(function(e){});
+
+// ---------- Facility / address search (Google Places, service-area scoped) ----------
+var facMarker=null;
+function facIcon(){return L.divIcon({className:'mmrpin',iconSize:[28,40],iconAnchor:[14,39],popupAnchor:[0,-36],html:'<svg width="28" height="40" viewBox="0 0 28 40"><path d="M14 0C6.3 0 0 6.3 0 14 0 24 14 40 14 40S28 24 28 14C28 6.3 21.7 0 14 0z" fill="#f59e0b" stroke="#fff" stroke-width="1.6"/><circle cx="14" cy="14" r="5" fill="#fff"/></svg>'});}
+function facShow(list){var el=document.getElementById('facresults');if(!el)return;if(list===null){el.innerHTML='';return;}if(!list.length){el.innerHTML='<div class="facnote">No matches. Try adding a city or ZIP.</div>';return;}el.innerHTML=list.map(function(r,i){var nm=r.name||(r.display_name||'').split(',')[0];var addr=(r.display_name||'').split(',').slice(1).join(',').trim();return '<div class="facitem" data-i="'+i+'"><b>'+escHtml(nm)+'</b><span>'+escHtml(addr)+'</span></div>';}).join('');Array.prototype.forEach.call(el.querySelectorAll('.facitem'),function(it){it.onclick=function(){facSelect(list[+it.dataset.i]);};});}
+var facCurrent=null;
+function facSelect(r){var lat=parseFloat(r.lat),lon=parseFloat(r.lon);if(isNaN(lat)||isNaN(lon))return;if(facMarker)map.removeLayer(facMarker);var nm=r.name||(r.display_name||'').split(',')[0];facCurrent={lat:lat,lon:lon,name:nm};facMarker=L.marker([lat,lon],{icon:facIcon()}).addTo(map);facMarker.bindPopup('<b>'+escHtml(nm)+'</b><br>'+escHtml(r.display_name||'')+'<br><a href="#" class="fackeep" style="color:#b45309;font-weight:600">\u{1F4CC} Keep as pin</a>');facMarker.on('popupopen',function(ev){var a=ev.popup.getElement().querySelector('.fackeep');if(a)a.onclick=function(x){x.preventDefault();facKeep();};});facMarker.openPopup();map.setView([lat,lon],15);}
+function facKeep(){if(!facCurrent)return;addPin(facCurrent.lat,facCurrent.lon,'red',facCurrent.name);savePins();if(facMarker){map.removeLayer(facMarker);facMarker=null;}}
+function facScope(){var el=document.getElementById('facscope');if(!el)return;if(activeZip){el.innerHTML='Search area: ZIP '+activeZip+' <a href="#" id="facclr" style="color:#2563eb">(clear)</a>';var a=document.getElementById('facclr');if(a)a.onclick=function(x){x.preventDefault();facClearZip();};}else{el.innerHTML='Search area: service area (Pasco &amp; Pinellas)';}}
+function facClearZip(){if(activeZip&&layersByZip[activeZip])layersByZip[activeZip].setStyle(zipStyle());activeZip=null;facScope();}
+var GKEY='AIzaSyBCfjbyc24luBZ7e8xHpoJaPsaaE8ACzHk';
+function gmapComp(comps,type){if(!comps)return'';for(var i=0;i<comps.length;i++){if((comps[i].types||[]).indexOf(type)>=0)return comps[i].longText||comps[i].shortText||'';}return'';}
+function facRun(){var q=(document.getElementById('facq').value||'').trim();var el=document.getElementById('facresults');if(!q){facShow(null);return;}el.innerHTML='<div class="facnote">Searching...</div>';var useZip=activeZip&&layersByZip[activeZip];var bnds=useZip?layersByZip[activeZip].getBounds():(serviceBounds||map.getBounds());var body={textQuery:q,regionCode:'US',maxResultCount:15,locationRestriction:{rectangle:{low:{latitude:bnds.getSouth(),longitude:bnds.getWest()},high:{latitude:bnds.getNorth(),longitude:bnds.getEast()}}}};fetch('https://places.googleapis.com/v1/places:searchText',{method:'POST',headers:{'Content-Type':'application/json','X-Goog-Api-Key':GKEY,'X-Goog-FieldMask':'places.displayName,places.formattedAddress,places.location,places.addressComponents'},body:JSON.stringify(body)}).then(function(r){return r.json();}).then(function(j){if(j&&j.error){el.innerHTML='<div class="facnote">Search error: '+escHtml(j.error.message||'unknown')+'</div>';return;}var list=((j&&j.places)||[]).map(function(p){var loc=p.location||{};var nm=(p.displayName&&p.displayName.text)||'';return {lat:loc.latitude,lon:loc.longitude,name:nm,display_name:(nm?nm+', ':'')+(p.formattedAddress||''),address:{postcode:gmapComp(p.addressComponents,'postal_code'),county:gmapComp(p.addressComponents,'administrative_area_level_2')}};});var filt=list.filter(function(r){var lat=parseFloat(r.lat),lon=parseFloat(r.lon);if(isNaN(lat)||isNaN(lon)||!bnds.contains([lat,lon]))return false;var a=r.address||{};if(useZip){return !a.postcode||a.postcode===activeZip;}var cty=(a.county||'').toLowerCase();if(cty.indexOf('pinellas')>=0||cty.indexOf('pasco')>=0)return true;if(a.postcode&&ZIPS.indexOf(a.postcode)>=0)return true;return !a.postcode&&!a.county;}).slice(0,8);if(!filt.length){el.innerHTML='<div class="facnote">No matches in '+(useZip?'ZIP '+activeZip:'the service area')+'. Try a nearby address'+(useZip?' or clear the ZIP filter':'')+'.</div>';return;}facShow(filt);}).catch(function(e){el.innerHTML='<div class="facnote">Search failed ('+escHtml(e.message)+'). Try again.</div>';});}
+(function(){var btn=document.getElementById('facbtn'),q=document.getElementById('facq');if(btn)btn.onclick=facRun;if(q)q.addEventListener('keydown',function(e){if(e.key==='Enter'){e.preventDefault();facRun();}});})();facScope();
+
+function fixSize(){setTimeout(function(){map.invalidateSize();},200);}
+window.addEventListener('resize',fixSize);window.addEventListener('orientationchange',fixSize);setTimeout(fixSize,400);
+</script></body></html>
