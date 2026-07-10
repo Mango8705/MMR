@@ -196,13 +196,11 @@ pins.forEach(function(p){if(p.facKey!=null)hideFacility(p.facKey);});
 
 // ---------- Shared permanent pins (baked into the file = every viewer sees them) ----------
 var SEEDPINS=[
-{lat:28.19645,lon:-82.35155,label:"AdventHealth Wound Care Center at Wesley Chapel",note:"AdventHealth wound care",addr:"2700 Healing Wy Ste 102, Wesley Chapel, FL 33543"},
-{lat:28.24793,lon:-82.20089,label:"AdventHealth Wound Care Center Zephyrhills",note:"AdventHealth wound care",addr:"6215 Abbott Station Dr Ste 107, Zephyrhills, FL 33542"},
-{lat:28.13296,lon:-82.75751,label:"AdventHealth North Pinellas - Wound Care",note:"AdventHealth wound care",addr:"1395 S Pinellas Ave, Tarpon Springs, FL 34689"},
-{lat:28.07151,lon:-82.42525,label:"AdventHealth Tampa Wound Care Center",note:"AdventHealth wound care",addr:"3000 Medical Park Dr Ste 430, Tampa, FL 33613"},
-{lat:28.01207,lon:-82.50452,label:"AdventHealth Wound Care Center Carrollwood",note:"AdventHealth wound care",addr:"6919 N Dale Mabry Hwy Ste 210, Tampa, FL 33614"},
-{lat:28.20438,lon:-82.65961,label:"Wound Care & Hyperbaric Medicine at HCA Florida Trinity",note:"Wound care center",addr:"9332 FL-54 Ste 302, Trinity, FL 34655"},
-{lat:28.22475,lon:-82.71317,label:"Gulfside Hospice - The Hadley Center (New Port Richey)",note:"Hospice",addr:"6117 Trouble Creek Rd, New Port Richey, FL 34653"}
+{lat:28.19530,lon:-82.35128,label:"AdventHealth Wesley Chapel",note:"AdventHealth hospital",addr:"2600 Bruce B Downs Blvd, Wesley Chapel, FL 33544"},
+{lat:28.26152,lon:-82.18506,label:"AdventHealth Zephyrhills",note:"AdventHealth hospital",addr:"7050 Gall Blvd, Zephyrhills, FL 33541"},
+{lat:28.13296,lon:-82.75751,label:"AdventHealth North Pinellas",note:"AdventHealth hospital",addr:"1395 S Pinellas Ave, Tarpon Springs, FL 34689"},
+{lat:28.07058,lon:-82.42359,label:"AdventHealth Tampa",note:"AdventHealth hospital",addr:"3100 E Fletcher Ave, Tampa, FL 33613"},
+{lat:28.01417,lon:-82.50359,label:"AdventHealth Carrollwood Hospital",note:"AdventHealth hospital",addr:"7171 N Dale Mabry Hwy, Tampa, FL 33614"}
 ];
 var seedLayer=L.layerGroup().addTo(map);
 SEEDPINS.forEach(function(sp){var m=L.marker([sp.lat,sp.lon],{icon:pinIcon('purple')});m.bindTooltip(escHtml(sp.label),{direction:'top'});sp.marker=m;m.addTo(seedLayer);});
