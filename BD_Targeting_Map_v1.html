@@ -197,22 +197,12 @@ pins.forEach(function(p){if(p.facKey!=null)hideFacility(p.facKey);});
 // ---------- Shared permanent pins (baked into the file = every viewer sees them) ----------
 var SEEDPINS=[
 {lat:28.19645,lon:-82.35155,label:"AdventHealth Wound Care Center at Wesley Chapel",addr:"2700 Healing Wy Ste 102, Wesley Chapel, FL 33543"},
-{lat:28.24793,lon:-82.20089,label:"AdventHealth Wound Care Center Zephyrhills",addr:"6215 Abbott Station Dr Ste 107, Zephyrhills, FL 33542"},
-{lat:28.06094,lon:-82.71194,label:"BayCare Wound Care - Mease Countryside Hospital",addr:"3890 Tampa Rd, Palm Harbor, FL 34684"},
-{lat:27.95128,lon:-82.80032,label:"BayCare Wound Care - Morton Plant Hospital",addr:"455 Pinellas St, Clearwater, FL 33756"},
-{lat:27.77782,lon:-82.64704,label:"BayCare Wound Care - St. Anthony's Hospital",addr:"500 Dr M.L.K. Jr St N 4th Floor, St. Petersburg, FL 33705"},
-{lat:27.83596,lon:-82.63902,label:"Bayfront Health St. Petersburg Wound Care & Hyperbaric Center",addr:"7000 4th St N, St. Petersburg, FL 33702"},
-{lat:28.13098,lon:-82.75736,label:"Center For Wound Care (Tarpon Springs)",addr:"1501 S Pinellas Ave Ste J, Tarpon Springs, FL 34689"},
-{lat:28.25946,lon:-82.18339,label:"Center For Wound Care (Zephyrhills)",addr:"38233 Daughtery Rd Ste M, Zephyrhills, FL 33540"},
-{lat:27.76519,lon:-82.64347,label:"Orlando Health Outpatient Wound Healing Center - St. Petersburg",addr:"710 5th Ave S #1200, St. Petersburg, FL 33701"},
-{lat:27.75224,lon:-82.74062,label:"Palms of Pasadena Hospital Wound Care",addr:"1609 Pasadena Ave S Suite 1E, St. Petersburg, FL 33707"},
-{lat:28.36268,lon:-82.68971,label:"Regional Medical Center Bayonet Point Wound Care Center",addr:"7525 Medical Dr, Hudson, FL 34667"},
-{lat:28.20438,lon:-82.65961,label:"Wound Care and Hyperbaric Medicine at HCA Florida Trinity Hospital",addr:"9332 FL-54 Ste 302, Trinity, FL 34655"}
+{lat:28.24793,lon:-82.20089,label:"AdventHealth Wound Care Center Zephyrhills",addr:"6215 Abbott Station Dr Ste 107, Zephyrhills, FL 33542"}
 ];
 var seedLayer=L.layerGroup().addTo(map);
 SEEDPINS.forEach(function(sp){var m=L.marker([sp.lat,sp.lon],{icon:pinIcon('purple')});m.bindTooltip(escHtml(sp.label),{direction:'top'});sp.marker=m;m.addTo(seedLayer);});
 function seedMini(){return '<svg viewBox="0 0 26 38" width="12" height="17" style="flex:0 0 12px"><path d="M13 0C6 0 0.5 5.5 0.5 12.5 0.5 22 13 38 13 38S25.5 22 25.5 12.5C25.5 5.5 20 0 13 0z" fill="#7c3aed" stroke="#fff" stroke-width="1.5"/><circle cx="13" cy="12.5" r="4.8" fill="#fff"/></svg>';}
-function openSeedPopup(sp){L.popup({offset:[0,-34]}).setLatLng([sp.lat,sp.lon]).setContent('<b>'+escHtml(sp.label)+'</b><br><span style="color:#6b7280;font-size:11.5px">Wound care center &middot; '+escHtml(sp.addr)+'</span>').openOn(map);}
+function openSeedPopup(sp){L.popup({offset:[0,-34]}).setLatLng([sp.lat,sp.lon]).setContent('<b>'+escHtml(sp.label)+'</b><br><span style="color:#6b7280;font-size:11.5px">AdventHealth wound care &middot; '+escHtml(sp.addr)+'</span>').openOn(map);}
 
 // ---------- Category toggle + legend control ----------
 var togCtl=L.control({position:'topleft'});
