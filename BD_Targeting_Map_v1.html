@@ -146,7 +146,7 @@ var ZIPS=["33705","34689","33756","34698","33711","33782","33763","33714","33761
 
 function escHtml(s){return (s+'').replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
 
-var map=L.map('map',{zoomControl:true}).setView([28.02,-82.62],9);
+var map=L.map('map',{zoomControl:true}).setView([28.18,-82.60],10);
 L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',{attribution:'&copy; OpenStreetMap &copy; CARTO',subdomains:'abcd',maxZoom:19}).addTo(map);
 var measureMode=false;
 function focusOn(lat,lon){var z=map.getZoom();if(z<13)map.setView([lat,lon],13);else map.panTo([lat,lon]);}
@@ -172,7 +172,7 @@ function savePins(){try{localStorage.setItem('mmr_bd_pins',JSON.stringify(pins.m
 function loadPins(){try{JSON.parse(localStorage.getItem('mmr_bd_pins')||'[]').forEach(function(p){addPin(p.lat,p.lng,p.color,p.label,(p.facKey==null?null:p.facKey));});}catch(e){}}
 function setAddMode(on){addMode=on;var b=document.getElementById('addpinbtn');if(b){b.classList.toggle('on',on);b.textContent=on?'Click map...':'Add pin';}map.getContainer().style.cursor=on?'crosshair':'';var hh=document.getElementById('pinhint');if(hh)hh.textContent=on?'Click the map to drop pins; click Add pin again to stop.':'';}
 function setPinColor(c){pinColor=c;var r=document.getElementById('pcRed'),bl=document.getElementById('pcBlue');if(r)r.classList.toggle('on',c==='red');if(bl)bl.classList.toggle('on',c==='blue');}
-var pinCtl=L.control({position:'topright'});
+var pinCtl=L.control({position:'topleft'});
 pinCtl.onAdd=function(){var d=L.DomUtil.create('div','legend pinpanel');d.innerHTML='<b>Add prospect pins</b><div style="margin:4px 0 3px">Color: <button type="button" id="pcRed" class="pcbtn on">Red</button> <button type="button" id="pcBlue" class="pcbtn">Blue</button></div><input id="pinlabel" placeholder="Pin label" maxlength="60"/><div style="margin-top:5px"><button type="button" id="addpinbtn" class="pcbtn">Add pin</button> <button type="button" id="clearpins" class="pcbtn">Clear</button></div><div id="pinhint" style="font-size:11px;color:#6b7280;margin-top:3px"></div>';L.DomEvent.disableClickPropagation(d);L.DomEvent.disableScrollPropagation(d);return d;};
 pinCtl.addTo(map);
 document.getElementById('pcRed').onclick=function(){setPinColor('red');};
@@ -191,25 +191,30 @@ function facPopup(f){return '<b>'+escHtml(f[1])+'</b><br><span style="color:#6b7
 FAC.forEach(function(f,i){var m=L.marker([f[2],f[3]],{icon:facBadge(f[0])});m.bindTooltip(escHtml(f[1]),{direction:'top'});
   m.on('click',function(){if(measureMode){pickEndpoint(f[2],f[3],f[1]);return;}openFacPopup(f,i);});
   m.addTo(facLayers[f[0]]);facMarkers[i]=m;});
-facLayers.H.addTo(map);facLayers.P.addTo(map);facLayers.S.addTo(map);
+facLayers.H.addTo(map);
 pins.forEach(function(p){if(p.facKey!=null)hideFacility(p.facKey);});
 
 // ---------- Shared permanent pins (baked into the file = every viewer sees them) ----------
 var SEEDPINS=[
-{lat:28.19645,lon:-82.35155,label:"AdventHealth Wound Care Center at Wesley Chapel",addr:"2700 Healing Wy Ste 102, Wesley Chapel, FL 33543"},
-{lat:28.24793,lon:-82.20089,label:"AdventHealth Wound Care Center Zephyrhills",addr:"6215 Abbott Station Dr Ste 107, Zephyrhills, FL 33542"}
+{lat:28.19645,lon:-82.35155,label:"AdventHealth Wound Care Center at Wesley Chapel",note:"AdventHealth wound care",addr:"2700 Healing Wy Ste 102, Wesley Chapel, FL 33543"},
+{lat:28.24793,lon:-82.20089,label:"AdventHealth Wound Care Center Zephyrhills",note:"AdventHealth wound care",addr:"6215 Abbott Station Dr Ste 107, Zephyrhills, FL 33542"},
+{lat:28.13296,lon:-82.75751,label:"AdventHealth North Pinellas - Wound Care",note:"AdventHealth wound care",addr:"1395 S Pinellas Ave, Tarpon Springs, FL 34689"},
+{lat:28.07151,lon:-82.42525,label:"AdventHealth Tampa Wound Care Center",note:"AdventHealth wound care",addr:"3000 Medical Park Dr Ste 430, Tampa, FL 33613"},
+{lat:28.01207,lon:-82.50452,label:"AdventHealth Wound Care Center Carrollwood",note:"AdventHealth wound care",addr:"6919 N Dale Mabry Hwy Ste 210, Tampa, FL 33614"},
+{lat:28.20438,lon:-82.65961,label:"Wound Care & Hyperbaric Medicine at HCA Florida Trinity",note:"Wound care center",addr:"9332 FL-54 Ste 302, Trinity, FL 34655"},
+{lat:28.22475,lon:-82.71317,label:"Gulfside Hospice - The Hadley Center (New Port Richey)",note:"Hospice",addr:"6117 Trouble Creek Rd, New Port Richey, FL 34653"}
 ];
 var seedLayer=L.layerGroup().addTo(map);
 SEEDPINS.forEach(function(sp){var m=L.marker([sp.lat,sp.lon],{icon:pinIcon('purple')});m.bindTooltip(escHtml(sp.label),{direction:'top'});sp.marker=m;m.addTo(seedLayer);});
 function seedMini(){return '<svg viewBox="0 0 26 38" width="12" height="17" style="flex:0 0 12px"><path d="M13 0C6 0 0.5 5.5 0.5 12.5 0.5 22 13 38 13 38S25.5 22 25.5 12.5C25.5 5.5 20 0 13 0z" fill="#7c3aed" stroke="#fff" stroke-width="1.5"/><circle cx="13" cy="12.5" r="4.8" fill="#fff"/></svg>';}
-function openSeedPopup(sp){L.popup({offset:[0,-34]}).setLatLng([sp.lat,sp.lon]).setContent('<b>'+escHtml(sp.label)+'</b><br><span style="color:#6b7280;font-size:11.5px">AdventHealth wound care &middot; '+escHtml(sp.addr)+'</span>').openOn(map);}
+function openSeedPopup(sp){L.popup({offset:[0,-34]}).setLatLng([sp.lat,sp.lon]).setContent('<b>'+escHtml(sp.label)+'</b><br><span style="color:#6b7280;font-size:11.5px">'+escHtml(sp.note||'Wound care')+' &middot; '+escHtml(sp.addr)+'</span>').openOn(map);}
 
 // ---------- Category toggle + legend control ----------
 var togCtl=L.control({position:'topleft'});
 togCtl.onAdd=function(){var d=L.DomUtil.create('div','legend factoggle');var counts={H:0,P:0,S:0};FAC.forEach(function(f){counts[f[0]]++;});
-  var html='<b>Facilities</b>';['H','P','S'].forEach(function(c){html+='<label><input type="checkbox" data-c="'+c+'" checked>'+badgeMini(c)+'<span>'+CAT[c].label+'</span><span class="cnt">'+counts[c]+'</span></label>';});
+  var html='<b>Facilities</b>';['H','P','S'].forEach(function(c){html+='<label><input type="checkbox" data-c="'+c+'"'+(c==='H'?' checked':'')+'>'+badgeMini(c)+'<span>'+CAT[c].label+'</span><span class="cnt">'+counts[c]+'</span></label>';});html+='<div style="margin-top:6px;font-size:11px"><a href="#" id="facAll" style="color:#2563eb">Select all</a> &middot; <a href="#" id="facNone" style="color:#2563eb">Deselect all</a></div>';
   d.innerHTML=html;L.DomEvent.disableClickPropagation(d);L.DomEvent.disableScrollPropagation(d);
-  Array.prototype.forEach.call(d.querySelectorAll('input'),function(inp){inp.onchange=function(){if(inp.getAttribute('data-seed')){if(inp.checked)seedLayer.addTo(map);else map.removeLayer(seedLayer);return;}var c=inp.getAttribute('data-c');if(inp.checked)facLayers[c].addTo(map);else map.removeLayer(facLayers[c]);};});
+  function fapply(c,on){if(on)facLayers[c].addTo(map);else map.removeLayer(facLayers[c]);}Array.prototype.forEach.call(d.querySelectorAll('input[data-c]'),function(inp){inp.onchange=function(){fapply(inp.getAttribute('data-c'),inp.checked);};});function fsetAll(on){Array.prototype.forEach.call(d.querySelectorAll('input[data-c]'),function(inp){inp.checked=on;fapply(inp.getAttribute('data-c'),on);});}d.querySelector('#facAll').onclick=function(x){x.preventDefault();fsetAll(true);};d.querySelector('#facNone').onclick=function(x){x.preventDefault();fsetAll(false);};
   return d;};
 togCtl.addTo(map);
 
