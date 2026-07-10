@@ -58,6 +58,7 @@
   </div>
 </div>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
 // ---- Facility dataset (compiled from Google Places, Pasco & Pinellas) ----
 // [category, name, lat, lon, zip, city]   category: H=Hospital, P=Hospice, S=Surgery center
@@ -190,7 +191,7 @@ var addMode=false,pinColor='red',pins=[];
 function pinIcon(color){var fill=color==='blue'?'#1e6fe0':(color==='orange'?'#f59e0b':(color==='purple'?'#7c3aed':'#e11d1d'));return L.divIcon({className:'mmrpin',iconSize:[26,38],iconAnchor:[13,37],popupAnchor:[0,-34],tooltipAnchor:[0,-30],html:'<svg width="26" height="38" viewBox="0 0 26 38"><path d="M13 0C6 0 0.5 5.5 0.5 12.5 0.5 22 13 38 13 38S25.5 22 25.5 12.5C25.5 5.5 20 0 13 0z" fill="'+fill+'" stroke="#fff" stroke-width="1.5"/><circle cx="13" cy="12.5" r="4.8" fill="#fff"/></svg>'});}
 function pinPopupHtml(label){return '<b>'+escHtml(label)+'</b><br><span style="font-size:11px;color:#6b7280">Color:</span> <span class="popcol"><a href="#" class="pincol" data-c="red" style="color:#e11d1d">Red</a> &middot; <a href="#" class="pincol" data-c="blue" style="color:#1e6fe0">Blue</a> &middot; <a href="#" class="pincol" data-c="orange" style="color:#f59e0b">Orange</a></span><br><a href="#" class="rmpin" style="color:#6b7280">Remove</a>';}
 function addPin(lat,lng,color,label,facKey){var m=L.marker([lat,lng],{icon:pinIcon(color),draggable:true});m.bindTooltip(escHtml(label),{direction:'top'});var rec={lat:lat,lng:lng,color:color,label:label,facKey:(facKey==null?null:facKey),marker:m};
-  m.on('click',function(){if(measureMode){pickEndpoint(rec.lat,rec.lng,rec.label);return;}openPinPopup(rec);});
+  m.on('click',function(){if(selectMode){toggleSelect(rec.label,rec.lat,rec.lng);return;}if(measureMode){pickEndpoint(rec.lat,rec.lng,rec.label);return;}openPinPopup(rec);});
   m.on('dragend',function(){var ll=m.getLatLng();rec.lat=ll.lat;rec.lng=ll.lng;savePins();});m.addTo(map);pins.push(rec);return rec;}
 function dropPin(ll){var el=document.getElementById('pinlabel');var label=(el&&el.value.trim())||'Prospect';addPin(ll.lat,ll.lng,pinColor,label);savePins();}
 function savePins(){try{localStorage.setItem('mmr_bd_pins',JSON.stringify(pins.map(function(p){return {lat:p.lat,lng:p.lng,color:p.color,label:p.label,facKey:p.facKey};})));}catch(e){}}
@@ -204,7 +205,7 @@ document.getElementById('pcRed').onclick=function(){setPinColor('red');};
 document.getElementById('pcBlue').onclick=function(){setPinColor('blue');};
 document.getElementById('addpinbtn').onclick=function(){setAddMode(!addMode);};
 document.getElementById('clearpins').onclick=function(){if(pins.length&&confirm('Remove all prospect pins?')){pins.forEach(function(p){map.removeLayer(p.marker);});pins=[];savePins();}};
-map.on('click',function(e){if(addMode){dropPin(e.latlng);return;}if(measureMode){var pk=nearestPin(e.latlng);if(pk)pickEndpoint(pk.lat,pk.lon,pk.label);return;}var t=nearestTarget(e.latlng);if(t){if(t.kind==='pin')openPinPopup(t.rec);else if(t.kind==='seed')openSeedPopup(t.sp);else openFacPopup(t.f,t.i);}});
+map.on('click',function(e){if(addMode){dropPin(e.latlng);return;}if(selectMode){var st=nearestTarget(e.latlng);if(st)toggleSelectTarget(st);return;}if(measureMode){var pk=nearestPin(e.latlng);if(pk)pickEndpoint(pk.lat,pk.lon,pk.label);return;}var t=nearestTarget(e.latlng);if(t){if(t.kind==='pin')openPinPopup(t.rec);else if(t.kind==='seed')openSeedPopup(t.sp);else openFacPopup(t.f,t.i);}});
 loadPins();
 
 // ---------- Facility category layers ----------
@@ -214,7 +215,7 @@ function hideFacility(i){if(facMarkers[i]){var lyr=facLayers[FAC[i][0]];if(lyr.h
 function showFacility(i){if(facMarkers[i]){facLayers[FAC[i][0]].addLayer(facMarkers[i]);}}
 function facPopup(f){return '<b>'+escHtml(f[1])+'</b><br><span style="color:#6b7280;font-size:11.5px">'+CAT[f[0]].label.replace(/s$/,'')+' &middot; '+escHtml(f[5])+' '+escHtml(f[4])+'</span><br><a href="#" class="fac2pin" style="color:#b45309;font-weight:600">\u{1F4CC} Add as prospect pin</a>';}
 FAC.forEach(function(f,i){var m=L.marker([f[2],f[3]],{icon:facBadge(f[0])});m.bindTooltip(escHtml(f[1]),{direction:'top'});
-  m.on('click',function(){if(measureMode){pickEndpoint(f[2],f[3],f[1]);return;}openFacPopup(f,i);});
+  m.on('click',function(){if(selectMode){toggleSelect(f[1],f[2],f[3]);return;}if(measureMode){pickEndpoint(f[2],f[3],f[1]);return;}openFacPopup(f,i);});
   m.addTo(facLayers[f[0]]);facMarkers[i]=m;});
 facLayers.H.addTo(map);
 pins.forEach(function(p){if(p.facKey!=null)hideFacility(p.facKey);});
@@ -228,7 +229,7 @@ var SEEDPINS=[
 {lat:28.01417,lon:-82.50359,label:"AdventHealth Carrollwood Hospital",note:"AdventHealth hospital",addr:"7171 N Dale Mabry Hwy, Tampa, FL 33614"}
 ];
 var seedLayer=L.layerGroup().addTo(map);
-SEEDPINS.forEach(function(sp){var m=L.marker([sp.lat,sp.lon],{icon:pinIcon('purple')});m.bindTooltip(escHtml(sp.label),{direction:'top'});m.on('click',function(){if(measureMode){pickEndpoint(sp.lat,sp.lon,sp.label);return;}openSeedPopup(sp);});sp.marker=m;m.addTo(seedLayer);});
+SEEDPINS.forEach(function(sp){var m=L.marker([sp.lat,sp.lon],{icon:pinIcon('purple')});m.bindTooltip(escHtml(sp.label),{direction:'top'});m.on('click',function(){if(selectMode){toggleSelect(sp.label,sp.lat,sp.lon,sp.addr);return;}if(measureMode){pickEndpoint(sp.lat,sp.lon,sp.label);return;}openSeedPopup(sp);});sp.marker=m;m.addTo(seedLayer);});
 // hide any facility badge that coincides with a permanent (seed) pin
 SEEDPINS.forEach(function(sp){for(var i=0;i<FAC.length;i++){if(Math.abs(FAC[i][2]-sp.lat)<0.0015&&Math.abs(FAC[i][3]-sp.lon)<0.0015){hideFacility(i);break;}}});
 function seedMini(){return '<svg viewBox="0 0 26 38" width="12" height="17" style="flex:0 0 12px"><path d="M13 0C6 0 0.5 5.5 0.5 12.5 0.5 22 13 38 13 38S25.5 22 25.5 12.5C25.5 5.5 20 0 13 0z" fill="#7c3aed" stroke="#fff" stroke-width="1.5"/><circle cx="13" cy="12.5" r="4.8" fill="#fff"/></svg>';}
@@ -247,7 +248,7 @@ togCtl.addTo(map);
 var measA=null,measB=null,measLayer=L.layerGroup().addTo(map);
 function setMeasStatus(t){var e=document.getElementById('measStatus');if(e)e.innerHTML=t;}
 function clearMeasure(){measA=null;measB=null;measLayer.clearLayers();setMeasStatus(measureMode?'Click the first pin (facility or prospect).':'Measure driving time between two pins.');}
-function toggleMeasure(){measureMode=!measureMode;var b=document.getElementById('measToggle');if(b){b.textContent=measureMode?'Stop':'Start';b.classList.toggle('on',measureMode);}map.getContainer().style.cursor=measureMode?'crosshair':'';map.getContainer().classList.toggle('measuring',measureMode);if(measureMode){map.dragging.disable();}else{map.dragging.enable();}clearMeasure();}
+function toggleMeasure(){measureMode=!measureMode;if(measureMode&&selectMode){selectMode=false;var sb=document.getElementById('selToggle');if(sb){sb.textContent='Start';sb.classList.remove('on');}updateSel();}var b=document.getElementById('measToggle');if(b){b.textContent=measureMode?'Stop':'Start';b.classList.toggle('on',measureMode);}map.getContainer().style.cursor=(measureMode||selectMode)?'crosshair':'';map.getContainer().classList.toggle('measuring',measureMode||selectMode);if(measureMode){map.dragging.disable();}else if(!selectMode){map.dragging.enable();}clearMeasure();}
 var __lastPick=0;
 function nearestPin(ll){var cp=map.latLngToContainerPoint(ll);var best=null,bd=1e9;FAC.forEach(function(f,i){if(facMarkers[i]&&map.hasLayer(facMarkers[i])){var d=cp.distanceTo(map.latLngToContainerPoint([f[2],f[3]]));if(d<bd){bd=d;best={lat:f[2],lon:f[3],label:f[1]};}}});pins.forEach(function(p){var d=cp.distanceTo(map.latLngToContainerPoint([p.lat,p.lng]));if(d<bd){bd=d;best={lat:p.lat,lon:p.lng,label:p.label};}});if(map.hasLayer(seedLayer))SEEDPINS.forEach(function(sp){var d=cp.distanceTo(map.latLngToContainerPoint([sp.lat,sp.lon]));if(d<bd){bd=d;best={lat:sp.lat,lon:sp.lon,label:sp.label};}});return bd<=32?best:null;}
 function nearestTarget(ll){var cp=map.latLngToContainerPoint(ll);var best=null,bd=1e9;pins.forEach(function(p){var d=cp.distanceTo(map.latLngToContainerPoint([p.lat,p.lng]));if(d<bd){bd=d;best={kind:'pin',rec:p};}});FAC.forEach(function(ff,ii){if(facMarkers[ii]&&map.hasLayer(facMarkers[ii])){var d=cp.distanceTo(map.latLngToContainerPoint([ff[2],ff[3]]));if(d<bd){bd=d;best={kind:'fac',f:ff,i:ii};}}});if(map.hasLayer(seedLayer))SEEDPINS.forEach(function(sp){var d=cp.distanceTo(map.latLngToContainerPoint([sp.lat,sp.lon]));if(d<bd){bd=d;best={kind:'seed',sp:sp};}});return bd<=32?best:null;}
@@ -261,6 +262,24 @@ measCtl.onAdd=function(){var d=L.DomUtil.create('div','legend');d.style.marginTo
 measCtl.addTo(map);
 document.getElementById('measToggle').onclick=toggleMeasure;
 document.getElementById('measClear').onclick=clearMeasure;
+
+// ---------- Export selection tool (pick pins -> download Excel) ----------
+var selectMode=false, selected={}, selectLayer=L.layerGroup().addTo(map);
+function setSelStatus(t){var e=document.getElementById('selStatus');if(e)e.innerHTML=t;}
+function updateSel(){var n=Object.keys(selected).length;setSelStatus(selectMode?('Selecting \u2014 <b>'+n+'</b> picked. Click facilities to add/remove.'):(n?('<b>'+n+'</b> selected. Click Export.'):'Click Start, then click facilities to add them.'));var ex=document.getElementById('selExport');if(ex)ex.disabled=!n;}
+function toggleSelect(name,lat,lon,addr){var k=lat.toFixed(5)+','+lon.toFixed(5);if(selected[k]){selectLayer.removeLayer(selected[k].ring);delete selected[k];}else{var ring=L.circleMarker([lat,lon],{radius:13,color:'#2563eb',weight:4,fillColor:'#2563eb',fillOpacity:0.2}).addTo(selectLayer);selected[k]={name:name,lat:lat,lon:lon,addr:addr||'',ring:ring};}updateSel();}
+function toggleSelectTarget(t){if(t.kind==='fac')toggleSelect(t.f[1],t.f[2],t.f[3]);else if(t.kind==='seed')toggleSelect(t.sp.label,t.sp.lat,t.sp.lon,t.sp.addr);else if(t.kind==='pin')toggleSelect(t.rec.label,t.rec.lat,t.rec.lng);}
+function clearSelection(){Object.keys(selected).forEach(function(k){selectLayer.removeLayer(selected[k].ring);});selected={};updateSel();}
+function toggleSelectMode(){selectMode=!selectMode;if(selectMode&&measureMode){measureMode=false;var mb=document.getElementById('measToggle');if(mb){mb.textContent='Start';mb.classList.remove('on');}measLayer.clearLayers();measA=null;measB=null;}var b=document.getElementById('selToggle');if(b){b.textContent=selectMode?'Stop':'Start';b.classList.toggle('on',selectMode);}map.getContainer().style.cursor=(selectMode||measureMode)?'crosshair':'';map.getContainer().classList.toggle('measuring',selectMode||measureMode);if(selectMode){map.dragging.disable();}else if(!measureMode){map.dragging.enable();}updateSel();}
+function selDetails(name,lat,lon){var body={textQuery:name,regionCode:'US',maxResultCount:1,locationBias:{circle:{center:{latitude:lat,longitude:lon},radius:400}}};return fetch('https://places.googleapis.com/v1/places:searchText',{method:'POST',headers:{'Content-Type':'application/json','X-Goog-Api-Key':GKEY,'X-Goog-FieldMask':'places.formattedAddress,places.nationalPhoneNumber'},body:JSON.stringify(body)}).then(function(r){return r.json();}).then(function(j){var p=(j.places||[])[0]||{};return {addr:(p.formattedAddress||'').replace(/, USA$/,''),phone:p.nationalPhoneNumber||''};}).catch(function(){return{addr:'',phone:''};});}
+async function exportSelection(){var items=Object.values(selected);if(!items.length)return;if(typeof XLSX==='undefined'){setSelStatus('Excel library still loading \u2014 try again in a moment.');return;}setSelStatus('Fetching details for '+items.length+' facilities\u2026');var rows=[['Facility name','Address','Phone']];for(var i=0;i<items.length;i++){var it=items[i];var d=await selDetails(it.name,it.lat,it.lon);rows.push([it.name,d.addr||it.addr||'',d.phone||'']);await new Promise(r=>setTimeout(r,120));}var ws=XLSX.utils.aoa_to_sheet(rows);ws['!cols']=[{wch:46},{wch:46},{wch:16}];var wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Selected');XLSX.writeFile(wb,'MMR_selected_facilities.xlsx');setSelStatus('Exported '+items.length+' facilities to Excel.');}
+var selCtl=L.control({position:'topleft'});
+selCtl.onAdd=function(){var d=L.DomUtil.create('div','legend');d.style.marginTop='8px';d.innerHTML='<b>Export list</b><div id="selStatus" style="font-size:11.5px;color:#6b7280;margin:3px 0;max-width:190px">Click Start, then click facilities to add them.</div><button type="button" id="selToggle" class="pcbtn">Start</button> <button type="button" id="selExport" class="pcbtn" disabled>Export</button> <button type="button" id="selClear" class="pcbtn">Clear</button>';L.DomEvent.disableClickPropagation(d);L.DomEvent.disableScrollPropagation(d);return d;};
+selCtl.addTo(map);
+document.getElementById('selToggle').onclick=toggleSelectMode;
+document.getElementById('selExport').onclick=exportSelection;
+document.getElementById('selClear').onclick=clearSelection;
+updateSel();
 
 // ---------- Side-panel facility list ----------
 function flyToFac(i){var f=FAC[i];focusOn(f[2],f[3]);var m=facMarkers[i];if(m&&facLayers[f[0]].hasLayer(m)){openFacPopup(f,i);}}
@@ -277,7 +296,7 @@ fetch("https://raw.githubusercontent.com/OpenDataDE/State-zip-code-GeoJSON/maste
  .then(function(r){if(!r.ok)throw new Error(r.status);return r.json();})
  .then(function(gj){var want=new Set(ZIPS);var feats=gj.features.filter(function(f){return want.has(f.properties.ZCTA5CE10);});
    L.geoJSON(feats,{style:zipStyle,onEachFeature:function(f,lyr){var z=f.properties.ZCTA5CE10;layersByZip[z]=lyr;
-     lyr.on('click',function(e){if(addMode){dropPin(e.latlng);L.DomEvent.stop(e);return;}if(measureMode){var pk=nearestPin(e.latlng);if(pk)pickEndpoint(pk.lat,pk.lon,pk.label);return;}var t=nearestTarget(e.latlng);if(t){if(t.kind==='pin')openPinPopup(t.rec);else if(t.kind==='seed')openSeedPopup(t.sp);else openFacPopup(t.f,t.i);}else selectZip(z);});
+     lyr.on('click',function(e){if(addMode){dropPin(e.latlng);L.DomEvent.stop(e);return;}if(selectMode){var sz=nearestTarget(e.latlng);if(sz)toggleSelectTarget(sz);return;}if(measureMode){var pk=nearestPin(e.latlng);if(pk)pickEndpoint(pk.lat,pk.lon,pk.label);return;}var t=nearestTarget(e.latlng);if(t){if(t.kind==='pin')openPinPopup(t.rec);else if(t.kind==='seed')openSeedPopup(t.sp);else openFacPopup(t.f,t.i);}else selectZip(z);});
      lyr.on('mouseover',function(){if(z!==activeZip)lyr.setStyle({weight:2,color:'#475569'});});
      lyr.on('mouseout',function(){if(z!==activeZip)lyr.setStyle(zipStyle());});
      L.marker(lyr.getBounds().getCenter(),{interactive:false,keyboard:false,icon:L.divIcon({className:'',html:'<div class="zipnum">'+z+'</div>',iconSize:[42,12],iconAnchor:[21,6]})}).addTo(zipLabels);}}).addTo(map);
