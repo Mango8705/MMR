@@ -44,6 +44,19 @@
   .facnote{font-size:11.5px;color:#9ca3af;padding:5px 2px;}
   .popcol a{font-weight:700;text-decoration:none;}
   .leaflet-container.measuring,.leaflet-container.measuring .leaflet-interactive,.leaflet-container.measuring .leaflet-marker-icon,.leaflet-container.measuring .leaflet-marker-icon svg,.leaflet-container.measuring .leaflet-marker-icon path,.leaflet-container.measuring path{cursor:crosshair !important;}
+  .mtool{width:214px;padding:0 !important;overflow:hidden;}
+  .mtool-h{display:flex;align-items:center;justify-content:space-between;padding:8px 11px;font-weight:700;font-size:13px;cursor:pointer;background:#1f4e78;color:#fff;user-select:none;}
+  #mtoolCar{font-size:10px;opacity:.85;}
+  .mtool-sec{padding:8px 11px;border-top:1px solid #eef1f4;}
+  .mtool-sec h4{margin:0 0 5px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#94a3b8;}
+  .mtool-note{font-size:11px;color:#6b7280;margin:2px 0 6px;line-height:1.35;max-width:190px;}
+  .mtool .mtog{display:flex;align-items:center;gap:7px;margin-top:4px;cursor:pointer;font-size:12.5px;}
+  .mtool .mtog input{margin:0;}
+  .mtool .mtog .cnt{color:#94a3b8;font-size:11px;margin-left:auto;}
+  .mtool-links{margin-top:7px;font-size:11px;}
+  .mtool-links a{color:#2563eb;text-decoration:none;}
+  .mtool .pcbtn{margin-top:4px;}
+  .mtool #pinlabel{width:100%;box-sizing:border-box;margin-top:2px;}
   @media (max-width:760px){#wrap{flex-direction:column;height:auto;}#map{flex:none;width:100%;height:60vh;min-height:340px;}#side{width:100%;border-left:none;border-top:1px solid #e5e7eb;}#sidelist{overflow:visible;}}
 </style></head><body>
 <div id="wrap">
@@ -198,13 +211,6 @@ function savePins(){try{localStorage.setItem('mmr_bd_pins',JSON.stringify(pins.m
 function loadPins(){try{JSON.parse(localStorage.getItem('mmr_bd_pins')||'[]').forEach(function(p){addPin(p.lat,p.lng,p.color,p.label,(p.facKey==null?null:p.facKey));});}catch(e){}}
 function setAddMode(on){addMode=on;var b=document.getElementById('addpinbtn');if(b){b.classList.toggle('on',on);b.textContent=on?'Click map...':'Add pin';}map.getContainer().style.cursor=on?'crosshair':'';var hh=document.getElementById('pinhint');if(hh)hh.textContent=on?'Click the map to drop pins; click Add pin again to stop.':'';}
 function setPinColor(c){pinColor=c;var r=document.getElementById('pcRed'),bl=document.getElementById('pcBlue');if(r)r.classList.toggle('on',c==='red');if(bl)bl.classList.toggle('on',c==='blue');}
-var pinCtl=L.control({position:'topleft'});
-pinCtl.onAdd=function(){var d=L.DomUtil.create('div','legend pinpanel');d.innerHTML='<b>Add prospect pins</b><div style="margin:4px 0 3px">Color: <button type="button" id="pcRed" class="pcbtn on">Red</button> <button type="button" id="pcBlue" class="pcbtn">Blue</button></div><input id="pinlabel" placeholder="Pin label" maxlength="60"/><div style="margin-top:5px"><button type="button" id="addpinbtn" class="pcbtn">Add pin</button> <button type="button" id="clearpins" class="pcbtn">Clear</button></div><div id="pinhint" style="font-size:11px;color:#6b7280;margin-top:3px"></div>';L.DomEvent.disableClickPropagation(d);L.DomEvent.disableScrollPropagation(d);return d;};
-pinCtl.addTo(map);
-document.getElementById('pcRed').onclick=function(){setPinColor('red');};
-document.getElementById('pcBlue').onclick=function(){setPinColor('blue');};
-document.getElementById('addpinbtn').onclick=function(){setAddMode(!addMode);};
-document.getElementById('clearpins').onclick=function(){if(pins.length&&confirm('Remove all prospect pins?')){pins.forEach(function(p){map.removeLayer(p.marker);});pins=[];savePins();}};
 map.on('click',function(e){if(addMode){dropPin(e.latlng);return;}if(selectMode){var st=nearestTarget(e.latlng);if(st)toggleSelectTarget(st);return;}if(measureMode){var pk=nearestPin(e.latlng);if(pk)pickEndpoint(pk.lat,pk.lon,pk.label);return;}var t=nearestTarget(e.latlng);if(t){if(t.kind==='pin')openPinPopup(t.rec);else if(t.kind==='seed')openSeedPopup(t.sp);else openFacPopup(t.f,t.i);}});
 loadPins();
 
@@ -236,13 +242,6 @@ function seedMini(){return '<svg viewBox="0 0 26 38" width="12" height="17" styl
 function openSeedPopup(sp){L.popup({offset:[0,-34]}).setLatLng([sp.lat,sp.lon]).setContent('<b>'+escHtml(sp.label)+'</b><br><span style="color:#6b7280;font-size:11.5px">'+escHtml(sp.note||'Wound care')+' &middot; '+escHtml(sp.addr)+'</span>').openOn(map);}
 
 // ---------- Category toggle + legend control ----------
-var togCtl=L.control({position:'topleft'});
-togCtl.onAdd=function(){var d=L.DomUtil.create('div','legend factoggle');var counts={H:0,P:0,S:0,R:0};FAC.forEach(function(f){counts[f[0]]++;});
-  var html='<b>Facilities</b>';['H','P','S','R'].forEach(function(c){html+='<label><input type="checkbox" data-c="'+c+'"'+(c==='H'?' checked':'')+'>'+badgeMini(c)+'<span>'+CAT[c].label+'</span><span class="cnt">'+counts[c]+'</span></label>';});html+='<div style="margin-top:6px;font-size:11px"><a href="#" id="facAll" style="color:#2563eb">Select all</a> &middot; <a href="#" id="facNone" style="color:#2563eb">Deselect all</a></div>';
-  d.innerHTML=html;L.DomEvent.disableClickPropagation(d);L.DomEvent.disableScrollPropagation(d);
-  function fapply(c,on){if(on)facLayers[c].addTo(map);else map.removeLayer(facLayers[c]);}Array.prototype.forEach.call(d.querySelectorAll('input[data-c]'),function(inp){inp.onchange=function(){fapply(inp.getAttribute('data-c'),inp.checked);};});function fsetAll(on){Array.prototype.forEach.call(d.querySelectorAll('input[data-c]'),function(inp){inp.checked=on;fapply(inp.getAttribute('data-c'),on);});}d.querySelector('#facAll').onclick=function(x){x.preventDefault();fsetAll(true);};d.querySelector('#facNone').onclick=function(x){x.preventDefault();fsetAll(false);};
-  return d;};
-togCtl.addTo(map);
 
 // ---------- Drive-time measure tool (Google Routes API) ----------
 var measA=null,measB=null,measLayer=L.layerGroup().addTo(map);
@@ -257,11 +256,7 @@ function openFacPopup(ff,ii){var p=L.popup({offset:[0,-13]}).setLatLng([ff[2],ff
 function pickEndpoint(lat,lon,label){if(!measureMode)return;var now=Date.now();if(now-__lastPick<150)return;__lastPick=now;if(measA&&measB){clearMeasure();}if(!measA){measA={lat:lat,lon:lon,label:label};L.circleMarker([lat,lon],{radius:14,color:'#059669',weight:4,fillColor:'#059669',fillOpacity:0.25}).addTo(measLayer);setMeasStatus('From <b>'+escHtml(label)+'</b>.<br>Now click the destination pin.');}else{measB={lat:lat,lon:lon,label:label};L.circleMarker([lat,lon],{radius:14,color:'#dc2626',weight:4,fillColor:'#dc2626',fillOpacity:0.25}).addTo(measLayer);computeDrive();}}
 function decodePolyline(str){var index=0,lat=0,lng=0,coords=[];while(index<str.length){var b,shift=0,result=0;do{b=str.charCodeAt(index++)-63;result|=(b&0x1f)<<shift;shift+=5;}while(b>=0x20);var dlat=((result&1)?~(result>>1):(result>>1));lat+=dlat;shift=0;result=0;do{b=str.charCodeAt(index++)-63;result|=(b&0x1f)<<shift;shift+=5;}while(b>=0x20);var dlng=((result&1)?~(result>>1):(result>>1));lng+=dlng;coords.push([lat/1e5,lng/1e5]);}return coords;}
 function computeDrive(){setMeasStatus('Calculating drive time…');var body={origin:{location:{latLng:{latitude:measA.lat,longitude:measA.lon}}},destination:{location:{latLng:{latitude:measB.lat,longitude:measB.lon}}},travelMode:'DRIVE',routingPreference:'TRAFFIC_AWARE'};fetch('https://routes.googleapis.com/directions/v2:computeRoutes',{method:'POST',headers:{'Content-Type':'application/json','X-Goog-Api-Key':GKEY,'X-Goog-FieldMask':'routes.duration,routes.distanceMeters,routes.polyline.encodedPolyline'},body:JSON.stringify(body)}).then(function(r){return r.json();}).then(function(j){if(j.error||!j.routes||!j.routes[0]){setMeasStatus('Could not compute route'+(j.error?': '+escHtml(j.error.message):'')+'.');return;}var rt=j.routes[0];var mins=Math.round(parseInt(rt.duration)/60);var miles=(rt.distanceMeters/1609.34).toFixed(1);if(rt.polyline&&rt.polyline.encodedPolyline){L.polyline(decodePolyline(rt.polyline.encodedPolyline),{color:'#4f46e5',weight:4,opacity:0.75}).addTo(measLayer);}setMeasStatus('<b style="font-size:14px">'+mins+' min</b> &middot; '+miles+' mi<br><span style="color:#6b7280">'+escHtml(measA.label)+' &rarr; '+escHtml(measB.label)+'</span><br><span style="color:#9ca3af;font-size:10.5px">driving, live traffic</span>');}).catch(function(e){setMeasStatus('Route error: '+escHtml(e.message));});}
-var measCtl=L.control({position:'topleft'});
-measCtl.onAdd=function(){var d=L.DomUtil.create('div','legend');d.style.marginTop='8px';d.innerHTML='<b>Drive-time tool</b><div id="measStatus" style="font-size:11.5px;color:#6b7280;margin:3px 0;max-width:190px">Measure driving time between two pins.</div><button type="button" id="measToggle" class="pcbtn">Start</button> <button type="button" id="measClear" class="pcbtn">Clear</button>';L.DomEvent.disableClickPropagation(d);L.DomEvent.disableScrollPropagation(d);return d;};
-measCtl.addTo(map);
-document.getElementById('measToggle').onclick=toggleMeasure;
-document.getElementById('measClear').onclick=clearMeasure;
+
 
 // ---------- Export selection tool (pick pins -> download Excel) ----------
 var selectMode=false, selected={}, selectLayer=L.layerGroup().addTo(map);
@@ -273,9 +268,32 @@ function clearSelection(){Object.keys(selected).forEach(function(k){selectLayer.
 function toggleSelectMode(){selectMode=!selectMode;if(selectMode&&measureMode){measureMode=false;var mb=document.getElementById('measToggle');if(mb){mb.textContent='Start';mb.classList.remove('on');}measLayer.clearLayers();measA=null;measB=null;}var b=document.getElementById('selToggle');if(b){b.textContent=selectMode?'Stop':'Start';b.classList.toggle('on',selectMode);}map.getContainer().style.cursor=(selectMode||measureMode)?'crosshair':'';map.getContainer().classList.toggle('measuring',selectMode||measureMode);if(selectMode){map.dragging.disable();}else if(!measureMode){map.dragging.enable();}updateSel();}
 function selDetails(name,lat,lon){var body={textQuery:name,regionCode:'US',maxResultCount:1,locationBias:{circle:{center:{latitude:lat,longitude:lon},radius:400}}};return fetch('https://places.googleapis.com/v1/places:searchText',{method:'POST',headers:{'Content-Type':'application/json','X-Goog-Api-Key':GKEY,'X-Goog-FieldMask':'places.formattedAddress,places.nationalPhoneNumber'},body:JSON.stringify(body)}).then(function(r){return r.json();}).then(function(j){var p=(j.places||[])[0]||{};return {addr:(p.formattedAddress||'').replace(/, USA$/,''),phone:p.nationalPhoneNumber||''};}).catch(function(){return{addr:'',phone:''};});}
 async function exportSelection(){var items=Object.values(selected);if(!items.length)return;if(typeof XLSX==='undefined'){setSelStatus('Excel library still loading \u2014 try again in a moment.');return;}setSelStatus('Fetching details for '+items.length+' facilities\u2026');var rows=[['Facility name','Address','Phone']];for(var i=0;i<items.length;i++){var it=items[i];var d=await selDetails(it.name,it.lat,it.lon);rows.push([it.name,d.addr||it.addr||'',d.phone||'']);await new Promise(r=>setTimeout(r,120));}var ws=XLSX.utils.aoa_to_sheet(rows);ws['!cols']=[{wch:46},{wch:46},{wch:16}];var wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Selected');XLSX.writeFile(wb,'MMR_selected_facilities.xlsx');setSelStatus('Exported '+items.length+' facilities to Excel.');}
-var selCtl=L.control({position:'topleft'});
-selCtl.onAdd=function(){var d=L.DomUtil.create('div','legend');d.style.marginTop='8px';d.innerHTML='<b>Export list</b><div id="selStatus" style="font-size:11.5px;color:#6b7280;margin:3px 0;max-width:190px">Click Start, then click facilities to add them.</div><button type="button" id="selToggle" class="pcbtn">Start</button> <button type="button" id="selExport" class="pcbtn" disabled>Export</button> <button type="button" id="selClear" class="pcbtn">Clear</button>';L.DomEvent.disableClickPropagation(d);L.DomEvent.disableScrollPropagation(d);return d;};
-selCtl.addTo(map);
+var panelCtl=L.control({position:'topleft'});
+panelCtl.onAdd=function(){var d=L.DomUtil.create('div','legend mtool');
+  var counts={H:0,P:0,S:0,R:0};FAC.forEach(function(f){counts[f[0]]++;});
+  var facHtml='';['H','P','S','R'].forEach(function(c){facHtml+='<label class="mtog"><input type="checkbox" data-c="'+c+'"'+(c==='H'?' checked':'')+'>'+badgeMini(c)+'<span>'+CAT[c].label+'</span><span class="cnt">'+counts[c]+'</span></label>';});
+  d.innerHTML='<div class="mtool-h" id="mtoolHead"><span>\u2630 Map tools</span><span id="mtoolCar">\u25BE</span></div><div id="mtoolBody">'
+    +'<div class="mtool-sec"><h4>Facilities</h4>'+facHtml+'<div class="mtool-links"><a href="#" id="facAll">Select all</a> &middot; <a href="#" id="facNone">Deselect all</a></div></div>'
+    +'<div class="mtool-sec"><h4>Drive time</h4><div id="measStatus" class="mtool-note">Measure driving time between two pins.</div><button type="button" id="measToggle" class="pcbtn">Start</button> <button type="button" id="measClear" class="pcbtn">Clear</button></div>'
+    +'<div class="mtool-sec"><h4>Export list</h4><div id="selStatus" class="mtool-note">Start, then click facilities to add them.</div><button type="button" id="selToggle" class="pcbtn">Start</button> <button type="button" id="selExport" class="pcbtn" disabled>Export</button> <button type="button" id="selClear" class="pcbtn">Clear</button></div>'
+    +'<div class="mtool-sec"><h4>Prospect pins</h4><div class="mtool-note" style="margin-bottom:4px">Color: <button type="button" id="pcRed" class="pcbtn on">Red</button> <button type="button" id="pcBlue" class="pcbtn">Blue</button></div><input id="pinlabel" placeholder="Pin label" maxlength="60"/><div style="margin-top:5px"><button type="button" id="addpinbtn" class="pcbtn">Add pin</button> <button type="button" id="clearpins" class="pcbtn">Clear</button></div><div id="pinhint" class="mtool-note" style="margin-top:3px"></div></div>'
+    +'</div>';
+  L.DomEvent.disableClickPropagation(d);L.DomEvent.disableScrollPropagation(d);
+  var body=d.querySelector('#mtoolBody'),car=d.querySelector('#mtoolCar');
+  d.querySelector('#mtoolHead').onclick=function(){var hid=body.style.display==='none';body.style.display=hid?'':'none';car.innerHTML=hid?'\u25BE':'\u25B8';};
+  function fapply(c,on){if(on)facLayers[c].addTo(map);else map.removeLayer(facLayers[c]);}
+  Array.prototype.forEach.call(d.querySelectorAll('input[data-c]'),function(inp){inp.onchange=function(){fapply(inp.getAttribute('data-c'),inp.checked);};});
+  function fsetAll(on){Array.prototype.forEach.call(d.querySelectorAll('input[data-c]'),function(inp){inp.checked=on;fapply(inp.getAttribute('data-c'),on);});}
+  d.querySelector('#facAll').onclick=function(x){x.preventDefault();fsetAll(true);};
+  d.querySelector('#facNone').onclick=function(x){x.preventDefault();fsetAll(false);};
+  return d;};
+panelCtl.addTo(map);
+document.getElementById('pcRed').onclick=function(){setPinColor('red');};
+document.getElementById('pcBlue').onclick=function(){setPinColor('blue');};
+document.getElementById('addpinbtn').onclick=function(){setAddMode(!addMode);};
+document.getElementById('clearpins').onclick=function(){if(pins.length&&confirm('Remove all prospect pins?')){pins.forEach(function(p){map.removeLayer(p.marker);});pins=[];savePins();}};
+document.getElementById('measToggle').onclick=toggleMeasure;
+document.getElementById('measClear').onclick=clearMeasure;
 document.getElementById('selToggle').onclick=toggleSelectMode;
 document.getElementById('selExport').onclick=exportSelection;
 document.getElementById('selClear').onclick=clearSelection;
