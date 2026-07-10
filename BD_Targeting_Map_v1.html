@@ -276,7 +276,6 @@ panelCtl.onAdd=function(){var d=L.DomUtil.create('div','legend mtool');
     +'<div class="mtool-sec"><h4>Facilities</h4>'+facHtml+'<div class="mtool-links"><a href="#" id="facAll">Select all</a> &middot; <a href="#" id="facNone">Deselect all</a></div></div>'
     +'<div class="mtool-sec"><h4>Drive time</h4><div id="measStatus" class="mtool-note">Measure driving time between two pins.</div><button type="button" id="measToggle" class="pcbtn">Start</button> <button type="button" id="measClear" class="pcbtn">Clear</button></div>'
     +'<div class="mtool-sec"><h4>Export list</h4><div id="selStatus" class="mtool-note">Start, then click facilities to add them.</div><button type="button" id="selToggle" class="pcbtn">Start</button> <button type="button" id="selExport" class="pcbtn" disabled>Export</button> <button type="button" id="selClear" class="pcbtn">Clear</button></div>'
-    +'<div class="mtool-sec"><h4>Prospect pins</h4><div class="mtool-note" style="margin-bottom:4px">Color: <button type="button" id="pcRed" class="pcbtn on">Red</button> <button type="button" id="pcBlue" class="pcbtn">Blue</button></div><input id="pinlabel" placeholder="Pin label" maxlength="60"/><div style="margin-top:5px"><button type="button" id="addpinbtn" class="pcbtn">Add pin</button> <button type="button" id="clearpins" class="pcbtn">Clear</button></div><div id="pinhint" class="mtool-note" style="margin-top:3px"></div></div>'
     +'</div>';
   L.DomEvent.disableClickPropagation(d);L.DomEvent.disableScrollPropagation(d);
   var body=d.querySelector('#mtoolBody'),car=d.querySelector('#mtoolCar');
@@ -288,10 +287,6 @@ panelCtl.onAdd=function(){var d=L.DomUtil.create('div','legend mtool');
   d.querySelector('#facNone').onclick=function(x){x.preventDefault();fsetAll(false);};
   return d;};
 panelCtl.addTo(map);
-document.getElementById('pcRed').onclick=function(){setPinColor('red');};
-document.getElementById('pcBlue').onclick=function(){setPinColor('blue');};
-document.getElementById('addpinbtn').onclick=function(){setAddMode(!addMode);};
-document.getElementById('clearpins').onclick=function(){if(pins.length&&confirm('Remove all prospect pins?')){pins.forEach(function(p){map.removeLayer(p.marker);});pins=[];savePins();}};
 document.getElementById('measToggle').onclick=toggleMeasure;
 document.getElementById('measClear').onclick=clearMeasure;
 document.getElementById('selToggle').onclick=toggleSelectMode;
