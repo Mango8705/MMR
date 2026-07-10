@@ -165,9 +165,7 @@ var addMode=false,pinColor='red',pins=[];
 function pinIcon(color){var fill=color==='blue'?'#1e6fe0':(color==='orange'?'#f59e0b':'#e11d1d');return L.divIcon({className:'mmrpin',iconSize:[26,38],iconAnchor:[13,37],popupAnchor:[0,-34],tooltipAnchor:[0,-30],html:'<svg width="26" height="38" viewBox="0 0 26 38"><path d="M13 0C6 0 0.5 5.5 0.5 12.5 0.5 22 13 38 13 38S25.5 22 25.5 12.5C25.5 5.5 20 0 13 0z" fill="'+fill+'" stroke="#fff" stroke-width="1.5"/><circle cx="13" cy="12.5" r="4.8" fill="#fff"/></svg>'});}
 function pinPopupHtml(label){return '<b>'+escHtml(label)+'</b><br><span style="font-size:11px;color:#6b7280">Color:</span> <span class="popcol"><a href="#" class="pincol" data-c="red" style="color:#e11d1d">Red</a> &middot; <a href="#" class="pincol" data-c="blue" style="color:#1e6fe0">Blue</a> &middot; <a href="#" class="pincol" data-c="orange" style="color:#f59e0b">Orange</a></span><br><a href="#" class="rmpin" style="color:#6b7280">Remove</a>';}
 function addPin(lat,lng,color,label,facKey){var m=L.marker([lat,lng],{icon:pinIcon(color),draggable:true});m.bindTooltip(escHtml(label),{direction:'top'});var rec={lat:lat,lng:lng,color:color,label:label,facKey:(facKey==null?null:facKey),marker:m};
-  m.on('click',function(){if(measureMode){pickEndpoint(rec.lat,rec.lng,rec.label);return;}m.bindPopup(pinPopupHtml(rec.label)).openPopup();});
-  m.on('popupopen',function(ev){var el=ev.popup.getElement();var a=el.querySelector('.rmpin');if(a)a.onclick=function(x){x.preventDefault();map.removeLayer(m);pins=pins.filter(function(p){return p!==rec;});if(rec.facKey!=null)showFacility(rec.facKey);savePins();};
-    Array.prototype.forEach.call(el.querySelectorAll('.pincol'),function(cl){cl.onclick=function(x){x.preventDefault();var c=cl.getAttribute('data-c');rec.color=c;m.setIcon(pinIcon(c));savePins();};});});
+  m.on('click',function(){if(measureMode){pickEndpoint(rec.lat,rec.lng,rec.label);return;}var pp=L.popup({offset:[0,-34]}).setLatLng(m.getLatLng()).setContent(pinPopupHtml(rec.label)).openOn(map);var el=pp.getElement();if(el){var a=el.querySelector('.rmpin');if(a)a.onclick=function(x){x.preventDefault();map.removeLayer(m);pins=pins.filter(function(q){return q!==rec;});if(rec.facKey!=null)showFacility(rec.facKey);savePins();map.closePopup();};Array.prototype.forEach.call(el.querySelectorAll('.pincol'),function(cl){cl.onclick=function(x){x.preventDefault();var c=cl.getAttribute('data-c');rec.color=c;m.setIcon(pinIcon(c));savePins();};});}});
   m.on('dragend',function(){var ll=m.getLatLng();rec.lat=ll.lat;rec.lng=ll.lng;savePins();});m.addTo(map);pins.push(rec);return rec;}
 function dropPin(ll){var el=document.getElementById('pinlabel');var label=(el&&el.value.trim())||'Prospect';addPin(ll.lat,ll.lng,pinColor,label);savePins();}
 function savePins(){try{localStorage.setItem('mmr_bd_pins',JSON.stringify(pins.map(function(p){return {lat:p.lat,lng:p.lng,color:p.color,label:p.label,facKey:p.facKey};})));}catch(e){}}
@@ -191,8 +189,7 @@ function hideFacility(i){if(facMarkers[i]){var lyr=facLayers[FAC[i][0]];if(lyr.h
 function showFacility(i){if(facMarkers[i]){facLayers[FAC[i][0]].addLayer(facMarkers[i]);}}
 function facPopup(f){return '<b>'+escHtml(f[1])+'</b><br><span style="color:#6b7280;font-size:11.5px">'+CAT[f[0]].label.replace(/s$/,'')+' &middot; '+escHtml(f[5])+' '+escHtml(f[4])+'</span><br><a href="#" class="fac2pin" style="color:#b45309;font-weight:600">\u{1F4CC} Add as prospect pin</a>';}
 FAC.forEach(function(f,i){var m=L.marker([f[2],f[3]],{icon:facBadge(f[0])});m.bindTooltip(escHtml(f[1]),{direction:'top'});
-  m.on('click',function(){if(measureMode){pickEndpoint(f[2],f[3],f[1]);return;}m.bindPopup(facPopup(f)).openPopup();});
-  m.on('popupopen',function(ev){var a=ev.popup.getElement().querySelector('.fac2pin');if(a)a.onclick=function(x){x.preventDefault();addPin(f[2],f[3],'red',f[1],i);hideFacility(i);savePins();map.closePopup();};});
+  m.on('click',function(){if(measureMode){pickEndpoint(f[2],f[3],f[1]);return;}var p=L.popup({offset:[0,-13]}).setLatLng([f[2],f[3]]).setContent(facPopup(f)).openOn(map);var el=p.getElement();if(el){var a=el.querySelector('.fac2pin');if(a)a.onclick=function(x){x.preventDefault();addPin(f[2],f[3],'red',f[1],i);hideFacility(i);savePins();map.closePopup();};}});
   m.addTo(facLayers[f[0]]);facMarkers[i]=m;});
 facLayers.H.addTo(map);facLayers.P.addTo(map);facLayers.S.addTo(map);
 pins.forEach(function(p){if(p.facKey!=null)hideFacility(p.facKey);});
@@ -221,7 +218,7 @@ document.getElementById('measToggle').onclick=toggleMeasure;
 document.getElementById('measClear').onclick=clearMeasure;
 
 // ---------- Side-panel facility list ----------
-function flyToFac(i){var f=FAC[i];focusOn(f[2],f[3]);var m=facMarkers[i];if(m&&facLayers[f[0]].hasLayer(m)){m.bindPopup(facPopup(f)).openPopup();}}
+function flyToFac(i){var f=FAC[i];focusOn(f[2],f[3]);var m=facMarkers[i];if(m&&facLayers[f[0]].hasLayer(m)){var p=L.popup({offset:[0,-13]}).setLatLng([f[2],f[3]]).setContent(facPopup(f)).openOn(map);var el=p.getElement();if(el){var a=el.querySelector('.fac2pin');if(a)a.onclick=function(x){x.preventDefault();addPin(f[2],f[3],'red',f[1],i);hideFacility(i);savePins();map.closePopup();};}}}
 (function(){var el=document.getElementById('sidelist');var html='';['H','P','S'].forEach(function(c){var rows=FAC.map(function(f,i){return [f,i];}).filter(function(x){return x[0][0]===c;});
   html+='<div class="faccat">'+badgeMini(c)+' '+CAT[c].label+' ('+rows.length+')</div>';
   rows.forEach(function(x){html+='<div class="facrow" data-i="'+x[1]+'"><b>'+escHtml(x[0][1])+'</b><span>'+escHtml(x[0][5])+' &middot; '+escHtml(x[0][4])+'</span></div>';});});
