@@ -162,7 +162,7 @@ function badgeMini(cat){var col=CAT[cat].color;return '<svg class="badge" viewBo
 
 // ---------- Manual prospect pins (with color change) ----------
 var addMode=false,pinColor='red',pins=[];
-function pinIcon(color){var fill=color==='blue'?'#1e6fe0':(color==='orange'?'#f59e0b':'#e11d1d');return L.divIcon({className:'mmrpin',iconSize:[26,38],iconAnchor:[13,37],popupAnchor:[0,-34],tooltipAnchor:[0,-30],html:'<svg width="26" height="38" viewBox="0 0 26 38"><path d="M13 0C6 0 0.5 5.5 0.5 12.5 0.5 22 13 38 13 38S25.5 22 25.5 12.5C25.5 5.5 20 0 13 0z" fill="'+fill+'" stroke="#fff" stroke-width="1.5"/><circle cx="13" cy="12.5" r="4.8" fill="#fff"/></svg>'});}
+function pinIcon(color){var fill=color==='blue'?'#1e6fe0':(color==='orange'?'#f59e0b':(color==='purple'?'#7c3aed':'#e11d1d'));return L.divIcon({className:'mmrpin',iconSize:[26,38],iconAnchor:[13,37],popupAnchor:[0,-34],tooltipAnchor:[0,-30],html:'<svg width="26" height="38" viewBox="0 0 26 38"><path d="M13 0C6 0 0.5 5.5 0.5 12.5 0.5 22 13 38 13 38S25.5 22 25.5 12.5C25.5 5.5 20 0 13 0z" fill="'+fill+'" stroke="#fff" stroke-width="1.5"/><circle cx="13" cy="12.5" r="4.8" fill="#fff"/></svg>'});}
 function pinPopupHtml(label){return '<b>'+escHtml(label)+'</b><br><span style="font-size:11px;color:#6b7280">Color:</span> <span class="popcol"><a href="#" class="pincol" data-c="red" style="color:#e11d1d">Red</a> &middot; <a href="#" class="pincol" data-c="blue" style="color:#1e6fe0">Blue</a> &middot; <a href="#" class="pincol" data-c="orange" style="color:#f59e0b">Orange</a></span><br><a href="#" class="rmpin" style="color:#6b7280">Remove</a>';}
 function addPin(lat,lng,color,label,facKey){var m=L.marker([lat,lng],{icon:pinIcon(color),draggable:true});m.bindTooltip(escHtml(label),{direction:'top'});var rec={lat:lat,lng:lng,color:color,label:label,facKey:(facKey==null?null:facKey),marker:m};
   m.on('click',function(){if(measureMode){pickEndpoint(rec.lat,rec.lng,rec.label);return;}openPinPopup(rec);});
@@ -179,7 +179,7 @@ document.getElementById('pcRed').onclick=function(){setPinColor('red');};
 document.getElementById('pcBlue').onclick=function(){setPinColor('blue');};
 document.getElementById('addpinbtn').onclick=function(){setAddMode(!addMode);};
 document.getElementById('clearpins').onclick=function(){if(pins.length&&confirm('Remove all prospect pins?')){pins.forEach(function(p){map.removeLayer(p.marker);});pins=[];savePins();}};
-map.on('click',function(e){if(addMode){dropPin(e.latlng);return;}if(measureMode){var pk=nearestPin(e.latlng);if(pk)pickEndpoint(pk.lat,pk.lon,pk.label);return;}var t=nearestTarget(e.latlng);if(t){if(t.kind==='pin')openPinPopup(t.rec);else openFacPopup(t.f,t.i);}});
+map.on('click',function(e){if(addMode){dropPin(e.latlng);return;}if(measureMode){var pk=nearestPin(e.latlng);if(pk)pickEndpoint(pk.lat,pk.lon,pk.label);return;}var t=nearestTarget(e.latlng);if(t){if(t.kind==='pin')openPinPopup(t.rec);else if(t.kind==='seed')openSeedPopup(t.sp);else openFacPopup(t.f,t.i);}});
 loadPins();
 
 // ---------- Facility category layers ----------
@@ -194,12 +194,23 @@ FAC.forEach(function(f,i){var m=L.marker([f[2],f[3]],{icon:facBadge(f[0])});m.bi
 facLayers.H.addTo(map);facLayers.P.addTo(map);facLayers.S.addTo(map);
 pins.forEach(function(p){if(p.facKey!=null)hideFacility(p.facKey);});
 
+// ---------- Shared permanent pins (baked into the file = every viewer sees them) ----------
+var SEEDPINS=[
+{lat:28.19645,lon:-82.35155,label:"AdventHealth Wound Care Center at Wesley Chapel",addr:"2700 Healing Wy Ste 102, Wesley Chapel, FL 33543"},
+{lat:28.24793,lon:-82.20089,label:"AdventHealth Wound Care Center Zephyrhills",addr:"6215 Abbott Station Dr Ste 107, Zephyrhills, FL 33542"}
+];
+var seedLayer=L.layerGroup().addTo(map);
+SEEDPINS.forEach(function(sp){var m=L.marker([sp.lat,sp.lon],{icon:pinIcon('purple')});m.bindTooltip(escHtml(sp.label),{direction:'top'});sp.marker=m;m.addTo(seedLayer);});
+function seedMini(){return '<svg viewBox="0 0 26 38" width="12" height="17" style="flex:0 0 12px"><path d="M13 0C6 0 0.5 5.5 0.5 12.5 0.5 22 13 38 13 38S25.5 22 25.5 12.5C25.5 5.5 20 0 13 0z" fill="#7c3aed" stroke="#fff" stroke-width="1.5"/><circle cx="13" cy="12.5" r="4.8" fill="#fff"/></svg>';}
+function openSeedPopup(sp){L.popup({offset:[0,-34]}).setLatLng([sp.lat,sp.lon]).setContent('<b>'+escHtml(sp.label)+'</b><br><span style="color:#6b7280;font-size:11.5px">AdventHealth Wound Care &middot; '+escHtml(sp.addr)+'</span>').openOn(map);}
+
 // ---------- Category toggle + legend control ----------
 var togCtl=L.control({position:'topleft'});
 togCtl.onAdd=function(){var d=L.DomUtil.create('div','legend factoggle');var counts={H:0,P:0,S:0};FAC.forEach(function(f){counts[f[0]]++;});
   var html='<b>Facilities</b>';['H','P','S'].forEach(function(c){html+='<label><input type="checkbox" data-c="'+c+'" checked>'+badgeMini(c)+'<span>'+CAT[c].label+'</span><span class="cnt">'+counts[c]+'</span></label>';});
+  html+='<label><input type="checkbox" data-seed="1" checked>'+seedMini()+'<span>AdventHealth Wound Care</span><span class="cnt">'+SEEDPINS.length+'</span></label>';
   d.innerHTML=html;L.DomEvent.disableClickPropagation(d);L.DomEvent.disableScrollPropagation(d);
-  Array.prototype.forEach.call(d.querySelectorAll('input'),function(inp){inp.onchange=function(){var c=inp.getAttribute('data-c');if(inp.checked)facLayers[c].addTo(map);else map.removeLayer(facLayers[c]);};});
+  Array.prototype.forEach.call(d.querySelectorAll('input'),function(inp){inp.onchange=function(){if(inp.getAttribute('data-seed')){if(inp.checked)seedLayer.addTo(map);else map.removeLayer(seedLayer);return;}var c=inp.getAttribute('data-c');if(inp.checked)facLayers[c].addTo(map);else map.removeLayer(facLayers[c]);};});
   return d;};
 togCtl.addTo(map);
 
@@ -209,8 +220,8 @@ function setMeasStatus(t){var e=document.getElementById('measStatus');if(e)e.inn
 function clearMeasure(){measA=null;measB=null;measLayer.clearLayers();setMeasStatus(measureMode?'Click the first pin (facility or prospect).':'Measure driving time between two pins.');}
 function toggleMeasure(){measureMode=!measureMode;var b=document.getElementById('measToggle');if(b){b.textContent=measureMode?'Stop':'Start';b.classList.toggle('on',measureMode);}map.getContainer().style.cursor=measureMode?'crosshair':'';clearMeasure();}
 var __lastPick=0;
-function nearestPin(ll){var cp=map.latLngToContainerPoint(ll);var best=null,bd=1e9;FAC.forEach(function(f,i){if(facMarkers[i]&&facLayers[f[0]].hasLayer(facMarkers[i])){var d=cp.distanceTo(map.latLngToContainerPoint([f[2],f[3]]));if(d<bd){bd=d;best={lat:f[2],lon:f[3],label:f[1]};}}});pins.forEach(function(p){var d=cp.distanceTo(map.latLngToContainerPoint([p.lat,p.lng]));if(d<bd){bd=d;best={lat:p.lat,lon:p.lng,label:p.label};}});return bd<=32?best:null;}
-function nearestTarget(ll){var cp=map.latLngToContainerPoint(ll);var best=null,bd=1e9;pins.forEach(function(p){var d=cp.distanceTo(map.latLngToContainerPoint([p.lat,p.lng]));if(d<bd){bd=d;best={kind:'pin',rec:p};}});FAC.forEach(function(ff,ii){if(facMarkers[ii]&&facLayers[ff[0]].hasLayer(facMarkers[ii])){var d=cp.distanceTo(map.latLngToContainerPoint([ff[2],ff[3]]));if(d<bd){bd=d;best={kind:'fac',f:ff,i:ii};}}});return bd<=32?best:null;}
+function nearestPin(ll){var cp=map.latLngToContainerPoint(ll);var best=null,bd=1e9;FAC.forEach(function(f,i){if(facMarkers[i]&&facLayers[f[0]].hasLayer(facMarkers[i])){var d=cp.distanceTo(map.latLngToContainerPoint([f[2],f[3]]));if(d<bd){bd=d;best={lat:f[2],lon:f[3],label:f[1]};}}});pins.forEach(function(p){var d=cp.distanceTo(map.latLngToContainerPoint([p.lat,p.lng]));if(d<bd){bd=d;best={lat:p.lat,lon:p.lng,label:p.label};}});if(map.hasLayer(seedLayer))SEEDPINS.forEach(function(sp){var d=cp.distanceTo(map.latLngToContainerPoint([sp.lat,sp.lon]));if(d<bd){bd=d;best={lat:sp.lat,lon:sp.lon,label:sp.label};}});return bd<=32?best:null;}
+function nearestTarget(ll){var cp=map.latLngToContainerPoint(ll);var best=null,bd=1e9;pins.forEach(function(p){var d=cp.distanceTo(map.latLngToContainerPoint([p.lat,p.lng]));if(d<bd){bd=d;best={kind:'pin',rec:p};}});FAC.forEach(function(ff,ii){if(facMarkers[ii]&&facLayers[ff[0]].hasLayer(facMarkers[ii])){var d=cp.distanceTo(map.latLngToContainerPoint([ff[2],ff[3]]));if(d<bd){bd=d;best={kind:'fac',f:ff,i:ii};}}});if(map.hasLayer(seedLayer))SEEDPINS.forEach(function(sp){var d=cp.distanceTo(map.latLngToContainerPoint([sp.lat,sp.lon]));if(d<bd){bd=d;best={kind:'seed',sp:sp};}});return bd<=32?best:null;}
 function openPinPopup(rec){var m=rec.marker;var pp=L.popup({offset:[0,-34]}).setLatLng(m.getLatLng()).setContent(pinPopupHtml(rec.label)).openOn(map);var el=pp.getElement();if(!el)return;var a=el.querySelector('.rmpin');if(a)a.onclick=function(x){x.preventDefault();map.removeLayer(m);pins=pins.filter(function(q){return q!==rec;});if(rec.facKey!=null)showFacility(rec.facKey);savePins();map.closePopup();};Array.prototype.forEach.call(el.querySelectorAll('.pincol'),function(cl){cl.onclick=function(x){x.preventDefault();var c=cl.getAttribute('data-c');rec.color=c;m.setIcon(pinIcon(c));savePins();};});}
 function openFacPopup(ff,ii){var p=L.popup({offset:[0,-13]}).setLatLng([ff[2],ff[3]]).setContent(facPopup(ff)).openOn(map);var el=p.getElement();if(!el)return;var a=el.querySelector('.fac2pin');if(a)a.onclick=function(x){x.preventDefault();addPin(ff[2],ff[3],'red',ff[1],ii);hideFacility(ii);savePins();map.closePopup();};}
 function pickEndpoint(lat,lon,label){if(!measureMode)return;var now=Date.now();if(now-__lastPick<150)return;__lastPick=now;if(measA&&measB){clearMeasure();}if(!measA){measA={lat:lat,lon:lon,label:label};L.circleMarker([lat,lon],{radius:7,color:'#059669',weight:3,fillColor:'#fff',fillOpacity:1}).addTo(measLayer);setMeasStatus('From <b>'+escHtml(label)+'</b>.<br>Now click the destination pin.');}else{measB={lat:lat,lon:lon,label:label};L.circleMarker([lat,lon],{radius:7,color:'#dc2626',weight:3,fillColor:'#fff',fillOpacity:1}).addTo(measLayer);computeDrive();}}
