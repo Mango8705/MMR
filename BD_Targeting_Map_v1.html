@@ -204,6 +204,8 @@ var SEEDPINS=[
 ];
 var seedLayer=L.layerGroup().addTo(map);
 SEEDPINS.forEach(function(sp){var m=L.marker([sp.lat,sp.lon],{icon:pinIcon('purple')});m.bindTooltip(escHtml(sp.label),{direction:'top'});sp.marker=m;m.addTo(seedLayer);});
+// hide any facility badge that coincides with a permanent (seed) pin
+SEEDPINS.forEach(function(sp){for(var i=0;i<FAC.length;i++){if(Math.abs(FAC[i][2]-sp.lat)<0.0015&&Math.abs(FAC[i][3]-sp.lon)<0.0015){hideFacility(i);break;}}});
 function seedMini(){return '<svg viewBox="0 0 26 38" width="12" height="17" style="flex:0 0 12px"><path d="M13 0C6 0 0.5 5.5 0.5 12.5 0.5 22 13 38 13 38S25.5 22 25.5 12.5C25.5 5.5 20 0 13 0z" fill="#7c3aed" stroke="#fff" stroke-width="1.5"/><circle cx="13" cy="12.5" r="4.8" fill="#fff"/></svg>';}
 function openSeedPopup(sp){L.popup({offset:[0,-34]}).setLatLng([sp.lat,sp.lon]).setContent('<b>'+escHtml(sp.label)+'</b><br><span style="color:#6b7280;font-size:11.5px">'+escHtml(sp.note||'Wound care')+' &middot; '+escHtml(sp.addr)+'</span>').openOn(map);}
 
@@ -220,7 +222,7 @@ togCtl.addTo(map);
 var measA=null,measB=null,measLayer=L.layerGroup().addTo(map);
 function setMeasStatus(t){var e=document.getElementById('measStatus');if(e)e.innerHTML=t;}
 function clearMeasure(){measA=null;measB=null;measLayer.clearLayers();setMeasStatus(measureMode?'Click the first pin (facility or prospect).':'Measure driving time between two pins.');}
-function toggleMeasure(){measureMode=!measureMode;var b=document.getElementById('measToggle');if(b){b.textContent=measureMode?'Stop':'Start';b.classList.toggle('on',measureMode);}map.getContainer().style.cursor=measureMode?'crosshair':'';clearMeasure();}
+function toggleMeasure(){measureMode=!measureMode;var b=document.getElementById('measToggle');if(b){b.textContent=measureMode?'Stop':'Start';b.classList.toggle('on',measureMode);}map.getContainer().style.cursor=measureMode?'crosshair':'';if(measureMode){map.dragging.disable();}else{map.dragging.enable();}clearMeasure();}
 var __lastPick=0;
 function nearestPin(ll){var cp=map.latLngToContainerPoint(ll);var best=null,bd=1e9;FAC.forEach(function(f,i){if(facMarkers[i]&&facLayers[f[0]].hasLayer(facMarkers[i])){var d=cp.distanceTo(map.latLngToContainerPoint([f[2],f[3]]));if(d<bd){bd=d;best={lat:f[2],lon:f[3],label:f[1]};}}});pins.forEach(function(p){var d=cp.distanceTo(map.latLngToContainerPoint([p.lat,p.lng]));if(d<bd){bd=d;best={lat:p.lat,lon:p.lng,label:p.label};}});if(map.hasLayer(seedLayer))SEEDPINS.forEach(function(sp){var d=cp.distanceTo(map.latLngToContainerPoint([sp.lat,sp.lon]));if(d<bd){bd=d;best={lat:sp.lat,lon:sp.lon,label:sp.label};}});return bd<=32?best:null;}
 function nearestTarget(ll){var cp=map.latLngToContainerPoint(ll);var best=null,bd=1e9;pins.forEach(function(p){var d=cp.distanceTo(map.latLngToContainerPoint([p.lat,p.lng]));if(d<bd){bd=d;best={kind:'pin',rec:p};}});FAC.forEach(function(ff,ii){if(facMarkers[ii]&&facLayers[ff[0]].hasLayer(facMarkers[ii])){var d=cp.distanceTo(map.latLngToContainerPoint([ff[2],ff[3]]));if(d<bd){bd=d;best={kind:'fac',f:ff,i:ii};}}});if(map.hasLayer(seedLayer))SEEDPINS.forEach(function(sp){var d=cp.distanceTo(map.latLngToContainerPoint([sp.lat,sp.lon]));if(d<bd){bd=d;best={kind:'seed',sp:sp};}});return bd<=32?best:null;}
