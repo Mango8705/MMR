@@ -70,8 +70,6 @@ var FAC=[
 ["H","Bay Pines VA Medical Center",27.81116,-82.77930,"33744","Bay Pines"],
 ["H","BayCare Alliant Hospital",28.01366,-82.78299,"34698","Dunedin"],
 ["H","BayCare Hospital Wesley Chapel",28.22318,-82.35576,"33544","Wesley Chapel"],
-["H","Encompass Health Rehabilitation Hospital of Largo",27.92544,-82.79720,"33770","Largo"],
-["H","Encompass Health Rehabilitation Hospital of St. Petersburg",27.78180,-82.71714,"33710","St. Petersburg"],
 ["H","HCA Florida Bayonet Point Hospital",28.36129,-82.68762,"34667","Hudson"],
 ["H","HCA Florida Largo Hospital",27.91502,-82.80364,"33770","Largo"],
 ["H","HCA Florida Largo West Hospital",27.89824,-82.82440,"33774","Largo"],
@@ -86,7 +84,6 @@ var FAC=[
 ["H","Morton Plant Hospital",27.95295,-82.80371,"33756","Clearwater"],
 ["H","Morton Plant North Bay Hospital",28.25400,-82.71445,"34652","New Port Richey"],
 ["H","Orlando Health Bayfront Hospital",27.76360,-82.64207,"33701","St. Petersburg"],
-["H","Pinellas County Rehabilitation Hospital",27.85103,-82.67732,"33782","Pinellas Park"],
 ["H","St. Anthony's Hospital",27.77866,-82.65004,"33705","St. Petersburg"],
 ["H","Starkey Ranch ER & Hospital",28.19152,-82.61506,"33556","Odessa"],
 ["P","AccentCare Hospice",27.93301,-82.72915,"33764","Clearwater"],
@@ -140,9 +137,35 @@ var FAC=[
 ["S","Tampa Bay Regional Surgery Center",27.87165,-82.74036,"33777","Largo"],
 ["S","Tampa Bay Surgery Center",28.20816,-82.52810,"34638","Land O' Lakes"],
 ["S","West Bay Surgery Center",27.91608,-82.80301,"33770","Largo"],
-["S","West Park Ambulatory Surgery Center",27.84186,-82.72970,"33781","Pinellas Park"]
+["S","West Park Ambulatory Surgery Center",27.84186,-82.72970,"33781","Pinellas Park"],
+["R","Alhambra Health and Rehabilitation Center",27.80685,-82.74246,"33710","St. Petersburg"],
+["R","Alpine Health & Rehab Center",27.74927,-82.68057,"33711","St. Petersburg"],
+["R","Apollo Health and Rehabilitation Center",27.78225,-82.66562,"33713","St. Petersburg"],
+["R","Dade City Health and Rehabilitation",28.35837,-82.20106,"33525","Dade City"],
+["R","East Bay Rehabilitation Center",27.91885,-82.74056,"33764","Clearwater"],
+["R","Encompass Health Rehabilitation Hospital of Largo",27.92544,-82.79720,"33770","Largo"],
+["R","Encompass Health Rehabilitation Hospital of St. Petersburg",27.78180,-82.71714,"33710","St. Petersburg"],
+["R","Gulfside Health and Rehabilitation",27.95848,-82.79037,"33756","Clearwater"],
+["R","Hillside Health and Rehabilitation Center",28.24747,-82.18420,"33542","Zephyrhills"],
+["R","Indian Rocks Rehabilitation Center",27.89824,-82.82463,"33774","Largo"],
+["R","Lexington Health and Rehabilitation Center",27.81263,-82.72295,"33709","St. Petersburg"],
+["R","Madonna Ptak Morton Plant Rehabilitation Center",27.95040,-82.80055,"33756","Belleair"],
+["R","Meadowpark Health & Rehabilitation Center",28.01417,-82.77596,"34698","Dunedin"],
+["R","New Port Richey Nursing and Rehabilitation Center",28.21793,-82.67495,"34653","New Port Richey"],
+["R","North Rehabilitation Center",27.78526,-82.65455,"33705","St. Petersburg"],
+["R","Oak Manor Healthcare and Rehabilitation Center",27.89549,-82.82393,"33774","Largo"],
+["R","Oakpark Health & Rehabilitation Center",28.06797,-82.73162,"34684","Palm Harbor"],
+["R","Pinellas County Rehabilitation Hospital",27.85103,-82.67732,"33782","Pinellas Park"],
+["R","Pinellas Park Post-Acute and Rehabilitation Center",27.85096,-82.69917,"33782","Pinellas Park"],
+["R","Pinellas Point Nursing and Rehab Center",27.71707,-82.67614,"33712","St. Petersburg"],
+["R","Sabal Palms Health & Rehabilitation",27.92177,-82.76912,"33771","Largo"],
+["R","South Heritage Health & Rehab",27.74820,-82.64299,"33705","St. Petersburg"],
+["R","St. Petersburg Nursing and Rehabilitation Center",27.83518,-82.64036,"33702","St. Petersburg"],
+["R","Westchester Gardens Health & Rehabilitation",28.04153,-82.70707,"33761","Clearwater"],
+["R","Windsor Woods Convalescent Center",28.35760,-82.69189,"34667","Hudson"],
+["R","Wrights Healthcare & Rehabilitation Center",27.87261,-82.79601,"33778","Largo"]
 ];
-var CAT={H:{label:'Hospitals',color:'#dc2626'},P:{label:'Hospices',color:'#0d9488'},S:{label:'Surgery centers',color:'#4f46e5'}};
+var CAT={H:{label:'Hospitals',color:'#dc2626'},P:{label:'Hospices',color:'#0d9488'},S:{label:'Surgery centers',color:'#4f46e5'},R:{label:'Rehab centers',color:'#ea580c'}};
 var ZIPS=["33705","34689","33756","34698","33711","33782","33763","33714","33761","33701","33774","34684","33771","33781","33755","33712","33759","33709","33707","33773","33702","33710","33770","33765","33777","33713","33778","33760","33772","34683","33764","34695","34653","33716","33704","34685","34655","34652","33762","33776","33744","33703","34677","34668","34691","33715","34654","33708","33626","33556","33541","34690","34688","34667","33615","33635"];
 
 function escHtml(s){return (s+'').replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
@@ -156,6 +179,7 @@ function focusOn(lat,lon){var z=map.getZoom();if(z<13)map.setView([lat,lon],13);
 function glyph(cat){
   if(cat==='H')return '<rect x="11" y="6.5" width="4" height="13" rx="1" fill="#fff"/><rect x="6.5" y="11" width="13" height="4" rx="1" fill="#fff"/>';
   if(cat==='P')return '<path d="M13 19.6C13 19.6 5.6 15.1 5.6 9.9 5.6 7.6 7.4 6.3 9.3 6.3 10.9 6.3 12.3 7.3 13 8.7 13.7 7.3 15.1 6.3 16.7 6.3 18.6 6.3 20.4 7.6 20.4 9.9 20.4 15.1 13 19.6 13 19.6Z" fill="#fff"/>';
+  if(cat==='R')return '<rect x="8" y="11.5" width="10" height="3" rx="1" fill="#fff"/><rect x="5" y="8.5" width="3" height="9" rx="1" fill="#fff"/><rect x="18" y="8.5" width="3" height="9" rx="1" fill="#fff"/>';
   return '<path d="M6.8 19.4 L15.2 11 L18 13.8 L9.6 22.2 L6.8 22.2 Z" fill="#fff" transform="translate(0,-2.4)"/><path d="M15.8 10.4 L18.8 7.4 L20.6 9.2 L17.6 12.2 Z" fill="#fff" transform="translate(0,-2.4)"/>';
 }
 function facBadge(cat){var col=CAT[cat].color;return L.divIcon({className:'mmrbadge',iconSize:[26,26],iconAnchor:[13,13],popupAnchor:[0,-13],tooltipAnchor:[0,-13],html:'<svg width="26" height="26" viewBox="0 0 26 26"><rect x="1.5" y="1.5" width="23" height="23" rx="6.5" fill="'+col+'" stroke="#fff" stroke-width="1.6"/>'+glyph(cat)+'</svg>'});}
@@ -184,7 +208,7 @@ map.on('click',function(e){if(addMode){dropPin(e.latlng);return;}if(measureMode)
 loadPins();
 
 // ---------- Facility category layers ----------
-var facLayers={H:L.layerGroup(),P:L.layerGroup(),S:L.layerGroup()};
+var facLayers={H:L.layerGroup(),P:L.layerGroup(),S:L.layerGroup(),R:L.layerGroup()};
 var facMarkers=[];
 function hideFacility(i){if(facMarkers[i]){var lyr=facLayers[FAC[i][0]];if(lyr.hasLayer(facMarkers[i]))lyr.removeLayer(facMarkers[i]);}}
 function showFacility(i){if(facMarkers[i]){facLayers[FAC[i][0]].addLayer(facMarkers[i]);}}
@@ -212,8 +236,8 @@ function openSeedPopup(sp){L.popup({offset:[0,-34]}).setLatLng([sp.lat,sp.lon]).
 
 // ---------- Category toggle + legend control ----------
 var togCtl=L.control({position:'topleft'});
-togCtl.onAdd=function(){var d=L.DomUtil.create('div','legend factoggle');var counts={H:0,P:0,S:0};FAC.forEach(function(f){counts[f[0]]++;});
-  var html='<b>Facilities</b>';['H','P','S'].forEach(function(c){html+='<label><input type="checkbox" data-c="'+c+'"'+(c==='H'?' checked':'')+'>'+badgeMini(c)+'<span>'+CAT[c].label+'</span><span class="cnt">'+counts[c]+'</span></label>';});html+='<div style="margin-top:6px;font-size:11px"><a href="#" id="facAll" style="color:#2563eb">Select all</a> &middot; <a href="#" id="facNone" style="color:#2563eb">Deselect all</a></div>';
+togCtl.onAdd=function(){var d=L.DomUtil.create('div','legend factoggle');var counts={H:0,P:0,S:0,R:0};FAC.forEach(function(f){counts[f[0]]++;});
+  var html='<b>Facilities</b>';['H','P','S','R'].forEach(function(c){html+='<label><input type="checkbox" data-c="'+c+'"'+(c==='H'?' checked':'')+'>'+badgeMini(c)+'<span>'+CAT[c].label+'</span><span class="cnt">'+counts[c]+'</span></label>';});html+='<div style="margin-top:6px;font-size:11px"><a href="#" id="facAll" style="color:#2563eb">Select all</a> &middot; <a href="#" id="facNone" style="color:#2563eb">Deselect all</a></div>';
   d.innerHTML=html;L.DomEvent.disableClickPropagation(d);L.DomEvent.disableScrollPropagation(d);
   function fapply(c,on){if(on)facLayers[c].addTo(map);else map.removeLayer(facLayers[c]);}Array.prototype.forEach.call(d.querySelectorAll('input[data-c]'),function(inp){inp.onchange=function(){fapply(inp.getAttribute('data-c'),inp.checked);};});function fsetAll(on){Array.prototype.forEach.call(d.querySelectorAll('input[data-c]'),function(inp){inp.checked=on;fapply(inp.getAttribute('data-c'),on);});}d.querySelector('#facAll').onclick=function(x){x.preventDefault();fsetAll(true);};d.querySelector('#facNone').onclick=function(x){x.preventDefault();fsetAll(false);};
   return d;};
@@ -240,7 +264,7 @@ document.getElementById('measClear').onclick=clearMeasure;
 
 // ---------- Side-panel facility list ----------
 function flyToFac(i){var f=FAC[i];focusOn(f[2],f[3]);var m=facMarkers[i];if(m&&facLayers[f[0]].hasLayer(m)){openFacPopup(f,i);}}
-(function(){var el=document.getElementById('sidelist');var html='';['H','P','S'].forEach(function(c){var rows=FAC.map(function(f,i){return [f,i];}).filter(function(x){return x[0][0]===c;});
+(function(){var el=document.getElementById('sidelist');var html='';['H','P','S','R'].forEach(function(c){var rows=FAC.map(function(f,i){return [f,i];}).filter(function(x){return x[0][0]===c;});
   html+='<div class="faccat">'+badgeMini(c)+' '+CAT[c].label+' ('+rows.length+')</div>';
   rows.forEach(function(x){html+='<div class="facrow" data-i="'+x[1]+'"><b>'+escHtml(x[0][1])+'</b><span>'+escHtml(x[0][5])+' &middot; '+escHtml(x[0][4])+'</span></div>';});});
   el.innerHTML=html;Array.prototype.forEach.call(el.querySelectorAll('.facrow'),function(r){r.onclick=function(){flyToFac(+r.dataset.i);};});})();
