@@ -470,4 +470,8 @@ function sOptimize(){sPush();
 function sReset(){sModel=sBuild(sDay);sHold=[];sOrigNet=sDayNet();sClearHist();sRender();}
 function sSetDay(day){sDay=day;document.querySelectorAll('#sgrain button').forEach(b=>b.classList.toggle('active',b.dataset.d===day));sModel=sBuild(day);sHold=[];sOrigNet=sDayNet();sClearHist();sRender();}
 function sInit(){const seg=document.getElementById('sgrain');seg.innerHTML=SHIFT.days.map((d,i)=>'<button data-d="'+d+'" class="'+(i===0?'active':'')+'" onclick="sSetDay(\''+d+'\')">'+d+'</button>').join('');sModel=sBuild(sDay);sHold=[];sOrigNet=sDayNet();sClearHist();sRender();}
-function showTab(t){['fin','ue','brk','prod','shift','map','pay'].forEach(v=>document.getElementById(v).style.display=v===t?'':'none');document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('active',x.dataset.tab===t));if(t==='brk'&&!window._bi){window._bi=1;bSetGrain('total');}if(t==='ue'&&!window._ui
+function showTab(t){['fin','ue','brk','prod','shift','map','pay'].forEach(v=>document.getElementById(v).style.display=v===t?'':'none');document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('active',x.dataset.tab===t));if(t==='brk'&&!window._bi){window._bi=1;bSetGrain('total');}if(t==='ue'&&!window._ui){window._ui=1;ueSetGrain('total');}if(t==='prod'&&!window._pi){window._pi=1;pRender();}if(t==='shift'&&!window._si){window._si=1;sInit();}}
+function doRefresh(btn){var a=document.querySelector('.tab.active');a=a?a.dataset.tab:'fin';if(btn){btn.textContent='\u21bb Refreshing\u2026';}if(a==='map'){var f=document.querySelector('.mapframe');var b=f.src.split('?')[0];f.src=b+'?t='+Date.now();setTimeout(function(){if(btn)btn.textContent='\u21bb Refresh';},900);}else{location.href=location.pathname+'?t='+Date.now()+'#'+a;}}
+setGrain('total');
+(function(){var h=(location.hash||'').replace('#','');if(['fin','ue','brk','map'].indexOf(h)>=0)showTab(h);})();
+</script></body></html>
