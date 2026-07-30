@@ -192,7 +192,7 @@ table.sa td.cell.drag{opacity:.5}
   <p class="note" id="hNote" style="margin:10px 0 0"></p>
  </div>
  <div class="kpis" id="tKpis" style="max-width:100%;grid-template-columns:repeat(4,1fr)"></div>
- <div class="card"><h3 id="tChartTitle">Week over week</h3><canvas id="tChart" height="95"></canvas></div>
+ <div class="card"><h3 id="tChartTitle">Week over week</h3><div style="height:250px;position:relative"><canvas id="tChart"></canvas></div></div>
  <div class="card"><h3 id="tTblTitle">Week-over-week table</h3><div id="tTable" style="overflow-x:auto"></div>
   <p class="note" id="tFoot"></p></div>
 </div>
@@ -634,13 +634,13 @@ function tRender(){
    (tState.group==='total'?'company total':tGroups().filter(function(x){return x[0]===tState.group;})[0][1].toLowerCase())+
    ' <span style="font-weight:400;color:var(--mut);font-size:12px">('+
    (tState.days==='all'?'all days':(tState.days==='wd'?'weekdays only':'weekends only'))+')</span>';
- var sh=tState.show,h='<table><thead><tr><th>Week</th>';
- groups.forEach(function(k){h+='<th style="text-align:right">'+k+'</th>';});
- if(tState.group!=='total')h+='<th style="text-align:right">Total</th>';
- if(sh==='val'&&tState.group==='total')h+='<th style="text-align:right">&Delta;</th><th style="text-align:right">&Delta;%</th>';
+ var sh=tState.show,h='<table class="dt"><thead><tr><th style="text-align:left;cursor:default">Week</th>';
+ groups.forEach(function(k){h+='<th style="text-align:right;cursor:default">'+k+'</th>';});
+ if(tState.group!=='total')h+='<th style="text-align:right;cursor:default">Total</th>';
+ if(sh==='val'&&tState.group==='total')h+='<th style="text-align:right;cursor:default">&Delta;</th><th style="text-align:right;cursor:default">&Delta;%</th>';
  h+='</tr></thead><tbody>';
  wks.forEach(function(w,r){
-  h+='<tr><td><b>'+tWkLab(w)+'</b></td>';
+  h+='<tr><td style="text-align:left"><b>'+tWkLab(w)+'</b></td>';
   groups.forEach(function(k){
     var v=series[k][r],p=r>0?series[k][r-1]:null,out,cl='';
     if(sh==='val')out=tFmt(v,m);
