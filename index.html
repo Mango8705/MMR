@@ -610,6 +610,49 @@ function tPick(k,on){
 function tSyncGroupEnabled(){
  var g=document.getElementById('tGroup'),multi=tState.metrics.length>1;
  g.disabled=multi;g.style.opacity=multi?'.5':'1';g.title=multi?'Breakdown is available when a single metric is selected':'Break down by';}
+
+/* draws value labels on each point + a colored name tag at the end of each line */
+var tRR=function(c,x,y,w,h,r){c.beginPath();c.moveTo(x+r,y);c.lineTo(x+w-r,y);c.quadraticCurveTo(x+w,y,x+w,y+r);
+ c.lineTo(x+w,y+h-r);c.quadraticCurveTo(x+w,y+h,x+w-r,y+h);c.lineTo(x+r,y+h);
+ c.quadraticCurveTo(x,y+h,x,y+h-r);c.lineTo(x,y+r);c.quadraticCurveTo(x,y,x+r,y);c.closePath();};
+var tLabelPlugin={id:'tlabels',afterDatasetsDraw:function(chart){
+ var ctx=chart.ctx,sets=chart.data.datasets,showVals=sets.length<=3,tags=[];
+ sets.forEach(function(ds,di){
+  var meta=chart.getDatasetMeta(di);
+  if(meta.hidden||chart.getDatasetMeta(di).visible===false)return;
+  var key=ds._mkey||'rev';
+  ctx.save();
+  if(showVals){
+   ctx.font='600 10.5px -apple-system,Segoe UI,Roboto,Arial,sans-serif';
+   ctx.textAlign='center';ctx.textBaseline='middle';
+   meta.data.forEach(function(pt,i){
+    var v=ds.data[i];if(v===null||v===undefined||isNaN(v))return;
+    var txt=tFmt(v,key),dy=(di===0?-13:(di===1?-13:15));
+    if(di===1)dy=15;
+    var w=ctx.measureText(txt).width;
+    ctx.fillStyle='rgba(255,255,255,.86)';
+    tRR(ctx,pt.x-w/2-3,pt.y+dy-7.5,w+6,15,3);ctx.fill();
+    ctx.fillStyle=ds.borderColor;ctx.fillText(txt,pt.x,pt.y+dy);});
+  }
+  var last=null;
+  for(var i=meta.data.length-1;i>=0;i--){var dv=ds.data[i];
+   if(dv!==null&&dv!==undefined&&!isNaN(dv)){last=meta.data[i];break;}}
+  if(last)tags.push({y:last.y,x:last.x,c:ds.borderColor,t:ds.label});
+  ctx.restore();});
+ /* de-overlap the end tags */
+ tags.sort(function(a,b){return a.y-b.y;});
+ for(var i=1;i<tags.length;i++){if(tags[i].y-tags[i-1].y<17)tags[i].y=tags[i-1].y+17;}
+ ctx.save();
+ ctx.font='700 11px -apple-system,Segoe UI,Roboto,Arial,sans-serif';
+ ctx.textAlign='left';ctx.textBaseline='middle';
+ tags.forEach(function(g){
+  var w=ctx.measureText(g.t).width, x=g.x+10, y=g.y;
+  ctx.strokeStyle=g.c;ctx.lineWidth=1.5;ctx.globalAlpha=.55;
+  ctx.beginPath();ctx.moveTo(g.x+2,g.y);ctx.lineTo(x,y);ctx.stroke();ctx.globalAlpha=1;
+  ctx.fillStyle=g.c;tRR(ctx,x,y-9,w+12,18,5);ctx.fill();
+  ctx.fillStyle='#fff';ctx.fillText(g.t,x+6,y+.5);});
+ ctx.restore();}};
+
 /* ---- render ---- */
 function tRender(){
  var A=tAgg(),wks=A.wks,idx=A.idx,ms=tState.metrics,multi=ms.length>1;
@@ -623,20 +666,19 @@ function tRender(){
  if(multi||tState.group==='total'){
    ms.forEach(function(k,i){
      var axis='y'+(i===0?'':i);
-     var vis=shown<2;if(vis)shown++;
-     scales[axis]={type:'linear',position:(i===0?'left':'right'),display:vis,
-       grid:{drawOnChartArea:i===0},
-       title:{display:vis,text:tMeta(k)[1],font:{size:11}},
-       ticks:{callback:function(v){return tFmt(v,k);},font:{size:10}}};
-     ds.push({label:tMeta(k)[1],yAxisID:axis,data:wks.map(function(w){return tVal(idx[w],k);}),
+     
+     scales[axis]={type:'linear',position:(i===0?'left':'right'),display:false,
+       grid:{drawOnChartArea:false},
+       grace:'18%'};
+     ds.push({label:tMeta(k)[1],_mkey:k,yAxisID:axis,data:wks.map(function(w){return tVal(idx[w],k);}),
        borderColor:T_PAL[i%T_PAL.length],backgroundColor:T_PAL[i%T_PAL.length]+'22',
        borderWidth:2.5,tension:.25,spanGaps:true,pointRadius:3,pointHoverRadius:5});});
  } else {
    var k0=ms[0];
-   scales.y={type:'linear',position:'left',ticks:{callback:function(v){return tFmt(v,k0);},font:{size:10}}};
+   scales.y={type:'linear',position:'left',display:false,grid:{drawOnChartArea:false},grace:'18%'};
    groups.forEach(function(g,i){
      series[g]=wks.map(function(w){return tVal((idx[w].g||{})[g],k0);});
-     ds.push({label:g,yAxisID:'y',data:series[g],borderColor:T_PAL[i%T_PAL.length],
+     ds.push({label:g,_mkey:k0,yAxisID:'y',data:series[g],borderColor:T_PAL[i%T_PAL.length],
        backgroundColor:T_PAL[i%T_PAL.length]+'22',borderWidth:2,tension:.25,spanGaps:true,pointRadius:3});});
  }
  /* KPIs — first metric */
@@ -655,7 +697,9 @@ function tRender(){
  var ctx=document.getElementById('tChart');
  if(tChart)tChart.destroy();
  tChart=new Chart(ctx,{type:'line',data:{labels:wks.map(tWkLab),datasets:ds},
+  plugins:[tLabelPlugin],
   options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},
+   layout:{padding:{right:130,top:22,bottom:6,left:6}},
    plugins:{legend:{display:true,position:'bottom',labels:{boxWidth:14,usePointStyle:true,pointStyle:'line',font:{size:11.5},padding:14}},
     tooltip:{callbacks:{label:function(c){
       var key=(multi||tState.group==='total')?ms[c.datasetIndex]:ms[0];
@@ -695,7 +739,7 @@ function tRender(){
  document.getElementById('tFoot').innerHTML=(!multi&&(tState.group==='broker'||tState.group==='los'))
    ?('Costs are allocated to each '+(tState.group==='broker'?'broker':'service level')+' in proportion to its share of that day’s trips. Margin = revenue − labor − fuel − insurance.')
    :'Margin = revenue − labor − fuel − insurance, matching the other dashboard tabs. Revenue ties exactly to the other tabs; trip counts exclude a small number of zero-revenue days (~1%).'
-   +(multi?' Left axis = '+tMeta(ms[0])[1]+(ms.length>1?', right axis = '+tMeta(ms[1])[1]:'')+(ms.length>2?'; '+tMeta(ms[2])[1]+' is plotted on its own hidden scale (hover for values).':'.'):'');
+   ;
 }
 function tSetDays(d){tState.days=d;document.querySelectorAll('#tDays button').forEach(function(b){b.classList.toggle('active',b.dataset.d===d);});
  tFillWeeks();tRender();}
