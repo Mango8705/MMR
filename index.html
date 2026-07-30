@@ -162,37 +162,37 @@ table.sa td.cell.drag{opacity:.5}
  <p class="note">Weekly payroll reconciliation: upload the payroll report, paste the dispatch start times and the RouteGenie GPS JSON, and it produces the clock-vs-GPS deviation report. Open full tool: <a href="https://mango8705.github.io/MMR/payroll.html?v=1" target="_blank">payroll.html</a></p></div>
 
 <div class="wrap" id="trend" style="display:none">
- <div class="controls" style="flex-wrap:wrap;gap:10px">
-  <select id="tMetric" title="Metric"></select>
-  <select id="tGroup" title="Break down by"></select>
-  <div class="seg" id="tDays">
-   <button data-d="all" class="active" onclick="tSetDays('all')">All days</button>
-   <button data-d="wd" onclick="tSetDays('wd')">Weekdays</button>
-   <button data-d="we" onclick="tSetDays('we')">Weekends</button></div>
-  <div class="seg" id="tShow">
-   <button data-s="val" class="active" onclick="tSetShow('val')">Values</button>
-   <button data-s="abs" onclick="tSetShow('abs')">&Delta; abs</button>
-   <button data-s="pct" onclick="tSetShow('pct')">&Delta; %</button></div>
-  <span style="font-size:12px;color:var(--mut)">Weeks</span>
-  <select id="tFrom" title="From week"></select>
-  <select id="tTo" title="To week"></select>
- </div>
- <div class="card" style="border-left:4px solid #7fb2e0">
-  <h3 style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-    <label style="font-weight:600;font-size:13px"><input type="checkbox" id="hOn" onchange="tRender()"> Hypothetical payer</label>
-    <span style="font-weight:400;font-size:12px;color:var(--mut)">model a new or replacement payer on top of the actual weeks</span></h3>
-  <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end">
-   <label style="font-size:12px">Name<br><input id="hName" value="New Payer" style="width:120px;padding:6px 8px;border:1px solid var(--line);border-radius:8px" oninput="tRender()"></label>
-   <label style="font-size:12px">Mirror rates from<br><select id="hMirror" onchange="tMirror()"></select></label>
-   <label style="font-size:12px">$ / trip<br><input id="hRate" type="number" step="0.01" value="33.30" style="width:90px;padding:6px 8px;border:1px solid var(--line);border-radius:8px" oninput="tRender()"></label>
-   <label style="font-size:12px">Trips / week<br><input id="hVol" type="number" step="1" value="44" style="width:90px;padding:6px 8px;border:1px solid var(--line);border-radius:8px" oninput="tRender()"></label>
-   <label style="font-size:12px">Var cost / trip<br><input id="hVar" type="number" step="0.01" value="24.85" style="width:100px;padding:6px 8px;border:1px solid var(--line);border-radius:8px" oninput="tRender()"></label>
-   <button onclick="tReset()" style="padding:7px 12px;border:1px solid var(--line);border-radius:8px;background:#fff;cursor:pointer;font-size:12px">Reset</button>
+ <div class="controls" style="flex-wrap:wrap;gap:16px;align-items:flex-end">
+  <div style="display:flex;flex-direction:column;gap:5px">
+   <label style="font-size:10.5px;text-transform:uppercase;letter-spacing:.04em;color:var(--mut);font-weight:600">Metrics (up to 3)</label>
+   <div style="position:relative">
+    <button type="button" id="tMetricBtn" onclick="tToggleMenu(event)" style="padding:7px 12px;border:1px solid var(--line);border-radius:8px;background:#fff;font-size:13px;cursor:pointer;min-width:230px;text-align:left">Margin %</button>
+    <div id="tMetricMenu" style="display:none;position:absolute;z-index:60;top:100%;left:0;margin-top:4px;background:#fff;border:1px solid var(--line);border-radius:8px;box-shadow:0 6px 20px rgba(0,0,0,.14);padding:6px;min-width:250px;max-height:320px;overflow:auto"></div>
+   </div>
   </div>
-  <p class="note" id="hNote" style="margin:10px 0 0"></p>
+  <div style="display:flex;flex-direction:column;gap:5px">
+   <label style="font-size:10.5px;text-transform:uppercase;letter-spacing:.04em;color:var(--mut);font-weight:600">Break down by</label>
+   <select id="tGroup" title="Break down by"></select>
+  </div>
+  <div style="display:flex;flex-direction:column;gap:5px">
+   <label style="font-size:10.5px;text-transform:uppercase;letter-spacing:.04em;color:var(--mut);font-weight:600">Days included</label>
+   <div class="seg" id="tDays">
+    <button data-d="all" class="active" onclick="tSetDays('all')">All days</button>
+    <button data-d="wd" onclick="tSetDays('wd')">Weekdays</button>
+    <button data-d="we" onclick="tSetDays('we')">Weekends</button></div>
+  </div>
+  <div style="display:flex;flex-direction:column;gap:5px">
+   <label style="font-size:10.5px;text-transform:uppercase;letter-spacing:.04em;color:var(--mut);font-weight:600">From week</label>
+   <select id="tFrom" title="From week"></select>
+  </div>
+  <div style="display:flex;flex-direction:column;gap:5px">
+   <label style="font-size:10.5px;text-transform:uppercase;letter-spacing:.04em;color:var(--mut);font-weight:600">To week</label>
+   <select id="tTo" title="To week"></select>
+  </div>
  </div>
  <div class="kpis" id="tKpis" style="max-width:100%;grid-template-columns:repeat(4,1fr)"></div>
- <div class="card"><h3 id="tChartTitle">Week over week</h3><div style="height:250px;position:relative"><canvas id="tChart"></canvas></div></div>
+ <div class="card"><h3 id="tChartTitle">Week over week</h3>
+  <div style="height:290px;position:relative"><canvas id="tChart"></canvas></div></div>
  <div class="card"><h3 id="tTblTitle">Week-over-week table</h3><div id="tTable" style="overflow-x:auto"></div>
   <p class="note" id="tFoot"></p></div>
 </div>
@@ -512,41 +512,32 @@ setGrain('total');
 (function(){var h=(location.hash||'').replace('#','');if(['fin','ue','brk','map'].indexOf(h)>=0)showTab(h);})();
 </script><script>
 /* ================= TRENDS (week-over-week) ================= */
-var tState={metric:'mgnpct',group:'total',days:'all',show:'val',from:null,to:null};
+var tState={metrics:['mgnpct'],group:'total',days:'all',from:null,to:null};
 var tChart=null;
 var T_PAL=['#2e5496','#e07a3f','#3f9e6c','#b0475e','#7b5fa8','#c9a227','#4a9fb8','#8a8f98','#d16ba5','#5f7d3a'];
+/* key, label, unit(pct|money|permoney|count) */
 function tMetrics(){return [
- ['mgnpct','Margin %'],['mgn','Margin $'],['rev','Revenue $'],['trips','Trips'],
- ['vans','Vans / day (avg)'],['tpv','Trips per van'],['rpv','Revenue per van'],
- ['pay','Labor $'],['fuel','Fuel $'],['ins','Insurance $'],
- ['rpt','Revenue / trip'],['lpt','Labor / trip'],['fpt','Fuel / trip'],['cpt','Total cost / trip']];}
+ ['mgnpct','Margin %','pct'],['mgn','Margin $','money'],['rev','Revenue $','money'],['trips','Trips','count'],
+ ['vans','Vans / day (avg)','count'],['tpv','Trips per van','count'],['rpv','Revenue per van','permoney'],
+ ['pay','Labor $','money'],['fuel','Fuel $','money'],['ins','Insurance $','money'],
+ ['rpt','Revenue / trip','permoney'],['lpt','Labor / trip','permoney'],['fpt','Fuel / trip','permoney'],
+ ['cpt','Total cost / trip','permoney']];}
+function tMeta(k){var a=tMetrics();for(var i=0;i<a.length;i++)if(a[i][0]===k)return a[i];return a[0];}
 function tGroups(){return [['total','Company total'],['broker','By broker'],['driver','By driver'],['los','By level of service']];}
 function tIsWknd(ds){var p=ds.split('-');var d=new Date(+p[0],+p[1]-1,+p[2]);var w=d.getDay();return w===0||w===6;}
 function tDayOk(ds){if(tState.days==='all')return true;var we=tIsWknd(ds);return tState.days==='we'?we:!we;}
 function tWeeks(){var s={};RECDAY.forEach(function(r){if(tDayOk(r.date))s[r.week]=1;});return Object.keys(s).sort();}
 function tRange(){var w=tWeeks();if(!w.length)return[];var a=tState.from||w[0],b=tState.to||w[w.length-1];
  return w.filter(function(x){return x>=a&&x<=b;});}
-function tHyp(){var e=document.getElementById('hOn');if(!e)return{on:false};
- return {on:e.checked,name:(document.getElementById('hName').value||'New Payer'),
-  rate:parseFloat(document.getElementById('hRate').value)||0,
-  vol:parseFloat(document.getElementById('hVol').value)||0,
-  vcost:parseFloat(document.getElementById('hVar').value)||0};}
-function tPayerRates(){var r={},t={};BL.forEach(function(x){r[x.broker]=(r[x.broker]||0)+x.rev;t[x.broker]=(t[x.broker]||0)+x.trips;});
- var o={};Object.keys(r).forEach(function(k){if(t[k]>0)o[k]=r[k]/t[k];});return o;}
-function tMirror(){var m=document.getElementById('hMirror').value,R=tPayerRates();
- if(R[m])document.getElementById('hRate').value=R[m].toFixed(2);tRender();}
-function tReset(){document.getElementById('hOn').checked=false;document.getElementById('hName').value='New Payer';
- document.getElementById('hRate').value='33.30';document.getElementById('hVol').value='44';
- document.getElementById('hVar').value='24.85';tRender();}
 function tAgg(){
- var wks=tRange(),H=tHyp(),idx={};
+ var wks=tRange(),idx={};
  wks.forEach(function(w){idx[w]={rev:0,pay:0,fuel:0,ins:0,trips:0,vd:{},days:{},g:{}};});
  RECDAY.forEach(function(r){
    if(!idx[r.week]||!tDayOk(r.date))return;var o=idx[r.week];
    o.rev+=r.rev;o.pay+=r.pay;o.fuel+=r.fuel;o.ins+=r.ins;o.trips+=r.trips;
    o.vd[r.driver+'|'+r.date]=1;o.days[r.date]=1;
-   if(tState.group==='driver'){var g=o.g[r.driver]=o.g[r.driver]||{rev:0,pay:0,fuel:0,ins:0,trips:0,vd:{}};
-     g.rev+=r.rev;g.pay+=r.pay;g.fuel+=r.fuel;g.ins+=r.ins;g.trips+=r.trips;g.vd[r.driver+'|'+r.date]=1;}
+   if(tState.group==='driver'){var g=o.g[r.driver]=o.g[r.driver]||{rev:0,pay:0,fuel:0,ins:0,trips:0,vd:{},days:{}};
+     g.rev+=r.rev;g.pay+=r.pay;g.fuel+=r.fuel;g.ins+=r.ins;g.trips+=r.trips;g.vd[r.driver+'|'+r.date]=1;g.days[r.date]=1;}
  });
  if(tState.group==='broker'||tState.group==='los'){
    var dayTot={};RECDAY.forEach(function(r){if(!tDayOk(r.date))return;
@@ -554,16 +545,9 @@ function tAgg(){
      d.trips+=r.trips;d.pay+=r.pay;d.fuel+=r.fuel;d.ins+=r.ins;});
    BLDAY.forEach(function(r){
      if(!idx[r.week]||!tDayOk(r.date))return;var key=(tState.group==='broker')?r.broker:r.los;
-     var o=idx[r.week],g=o.g[key]=o.g[key]||{rev:0,pay:0,fuel:0,ins:0,trips:0,vd:{}};
+     var o=idx[r.week],g=o.g[key]=o.g[key]||{rev:0,pay:0,fuel:0,ins:0,trips:0,vd:{},days:{}};
      var dt=dayTot[r.date];var sh=(dt&&dt.trips>0)?(r.trips/dt.trips):0;
-     g.rev+=r.rev;g.trips+=r.trips;g.pay+=dt?dt.pay*sh:0;g.fuel+=dt?dt.fuel*sh:0;g.ins+=dt?dt.ins*sh:0;});
- }
- if(H.on&&H.vol>0){
-   wks.forEach(function(w){var o=idx[w];if(!o)return;
-     var addRev=H.rate*H.vol,addTr=H.vol,addCost=H.vcost*H.vol;
-     o.rev+=addRev;o.trips+=addTr;o.pay+=addCost;
-     if(tState.group!=='total'){var g=o.g[H.name]=o.g[H.name]||{rev:0,pay:0,fuel:0,ins:0,trips:0,vd:{}};
-       g.rev+=addRev;g.trips+=addTr;g.pay+=addCost;}});
+     g.rev+=r.rev;g.trips+=r.trips;g.pay+=dt?dt.pay*sh:0;g.fuel+=dt?dt.fuel*sh:0;g.ins+=dt?dt.ins*sh:0;g.days[r.date]=1;});
  }
  return {wks:wks,idx:idx};}
 function tVal(o,m){
@@ -583,96 +567,138 @@ function tVal(o,m){
   case 'cpt':return o.trips>0?(o.pay+o.fuel+o.ins)/o.trips:null;}
  return null;}
 function tFmt(v,m){
- if(v===null||v===undefined||isNaN(v))return '&mdash;';
- if(m==='mgnpct')return v.toFixed(0)+'%';
- if(['rev','mgn','pay','fuel','ins'].indexOf(m)>=0)return '$'+Math.round(v).toLocaleString();
- if(['rpt','lpt','fpt','cpt','rpv'].indexOf(m)>=0)return '$'+v.toFixed(2);
+ if(v===null||v===undefined||isNaN(v))return '—';
+ var u=tMeta(m)[2];
+ if(u==='pct')return v.toFixed(0)+'%';
+ if(u==='money')return '$'+Math.round(v).toLocaleString();
+ if(u==='permoney')return '$'+v.toFixed(2);
  if(m==='trips')return Math.round(v).toLocaleString();
  return v.toFixed(1);}
 function tFmtD(v,m,pct){
- if(v===null||v===undefined||isNaN(v))return '&mdash;';
- var s=v>0?'+':'';
+ if(v===null||v===undefined||isNaN(v))return '—';
+ var s=v>0?'+':'',u=tMeta(m)[2];
  if(pct)return s+v.toFixed(0)+'%';
- if(m==='mgnpct')return s+v.toFixed(1)+'pp';
- if(['rev','mgn','pay','fuel','ins'].indexOf(m)>=0)return s+'$'+Math.round(v).toLocaleString();
- if(['rpt','lpt','fpt','cpt','rpv'].indexOf(m)>=0)return s+'$'+v.toFixed(2);
+ if(u==='pct')return s+v.toFixed(1)+'pp';
+ if(u==='money')return s+'$'+Math.round(v).toLocaleString();
+ if(u==='permoney')return s+'$'+v.toFixed(2);
  if(m==='trips')return s+Math.round(v);
  return s+v.toFixed(1);}
 function tGood(m){return ['pay','fuel','ins','lpt','fpt','cpt'].indexOf(m)<0;}
 function tWkLab(w){var p=w.split('-');return (+p[1])+'/'+(+p[2]);}
+/* ---- metric checklist ---- */
+function tToggleMenu(e){e.stopPropagation();var m=document.getElementById('tMetricMenu');
+ m.style.display=(m.style.display==='none')?'block':'none';}
+function tBuildMenu(){
+ var m=document.getElementById('tMetricMenu'),sel=tState.metrics;
+ m.innerHTML=tMetrics().map(function(x,i){
+  var on=sel.indexOf(x[0])>=0, full=(sel.length>=3&&!on);
+  var ci=on?sel.indexOf(x[0]):-1;
+  return '<label style="display:flex;align-items:center;gap:8px;padding:5px 7px;border-radius:6px;font-size:13px;cursor:'
+   +(full?'not-allowed':'pointer')+';opacity:'+(full?'.45':'1')+'">'
+   +'<input type="checkbox" '+(on?'checked':'')+' '+(full?'disabled':'')+' onchange="tPick(\''+x[0]+'\',this.checked)">'
+   +(on?'<span style="width:10px;height:10px;border-radius:2px;background:'+T_PAL[ci%T_PAL.length]+';display:inline-block"></span>':'<span style="width:10px"></span>')
+   +'<span>'+x[1]+'</span></label>';}).join('');
+ var names=sel.map(function(k){return tMeta(k)[1];});
+ document.getElementById('tMetricBtn').textContent=names.join('  ·  ')||'Select a metric';}
+function tPick(k,on){
+ var s=tState.metrics.slice();
+ if(on){if(s.length>=3)return;if(s.indexOf(k)<0)s.push(k);}
+ else{s=s.filter(function(x){return x!==k;});if(!s.length)return;}
+ tState.metrics=s;
+ if(s.length>1&&tState.group!=='total'){tState.group='total';document.getElementById('tGroup').value='total';}
+ tSyncGroupEnabled();tBuildMenu();tRender();}
+function tSyncGroupEnabled(){
+ var g=document.getElementById('tGroup'),multi=tState.metrics.length>1;
+ g.disabled=multi;g.style.opacity=multi?'.5':'1';g.title=multi?'Breakdown is available when a single metric is selected':'Break down by';}
+/* ---- render ---- */
 function tRender(){
- var A=tAgg(),wks=A.wks,idx=A.idx,m=tState.metric,H=tHyp();
- var mn=tMetrics().filter(function(x){return x[0]===m;})[0][1];
+ var A=tAgg(),wks=A.wks,idx=A.idx,ms=tState.metrics,multi=ms.length>1;
  var groups=[],series={};
- if(tState.group==='total'){groups=['Total'];series['Total']=wks.map(function(w){return tVal(idx[w],m);});}
+ if(tState.group==='total'||multi){groups=['Total'];}
  else{
    var vol={};wks.forEach(function(w){var g=idx[w].g||{};Object.keys(g).forEach(function(k){vol[k]=(vol[k]||0)+g[k].trips;});});
-   groups=Object.keys(vol).sort(function(a,b){return vol[b]-vol[a];}).slice(0,10);
-   groups.forEach(function(k){series[k]=wks.map(function(w){return tVal((idx[w].g||{})[k],m);});});}
- var tot=wks.map(function(w){return tVal(idx[w],m);});
+   groups=Object.keys(vol).sort(function(a,b){return vol[b]-vol[a];}).slice(0,10);}
+ /* datasets */
+ var ds=[],scales={x:{grid:{display:false}}},shown=0;
+ if(multi||tState.group==='total'){
+   ms.forEach(function(k,i){
+     var axis='y'+(i===0?'':i);
+     var vis=shown<2;if(vis)shown++;
+     scales[axis]={type:'linear',position:(i===0?'left':'right'),display:vis,
+       grid:{drawOnChartArea:i===0},
+       title:{display:vis,text:tMeta(k)[1],font:{size:11}},
+       ticks:{callback:function(v){return tFmt(v,k);},font:{size:10}}};
+     ds.push({label:tMeta(k)[1],yAxisID:axis,data:wks.map(function(w){return tVal(idx[w],k);}),
+       borderColor:T_PAL[i%T_PAL.length],backgroundColor:T_PAL[i%T_PAL.length]+'22',
+       borderWidth:2.5,tension:.25,spanGaps:true,pointRadius:3,pointHoverRadius:5});});
+ } else {
+   var k0=ms[0];
+   scales.y={type:'linear',position:'left',ticks:{callback:function(v){return tFmt(v,k0);},font:{size:10}}};
+   groups.forEach(function(g,i){
+     series[g]=wks.map(function(w){return tVal((idx[w].g||{})[g],k0);});
+     ds.push({label:g,yAxisID:'y',data:series[g],borderColor:T_PAL[i%T_PAL.length],
+       backgroundColor:T_PAL[i%T_PAL.length]+'22',borderWidth:2,tension:.25,spanGaps:true,pointRadius:3});});
+ }
+ /* KPIs — first metric */
+ var k1=ms[0],tot=wks.map(function(w){return tVal(idx[w],k1);});
  var last=tot.length?tot[tot.length-1]:null, prev=tot.length>1?tot[tot.length-2]:null;
  var valid=tot.filter(function(x){return x!==null&&!isNaN(x);});
  var avg=valid.length?valid.reduce(function(a,b){return a+b;},0)/valid.length:null;
- var d=(last!==null&&prev!==null)?last-prev:null;
- var dp=(d!==null&&prev)?100*d/Math.abs(prev):null;
- var col=(d===null)?'':((d>0)===tGood(m)?'#1a7f45':'#b0475e');
+ var d=(last!==null&&prev!==null)?last-prev:null, dp=(d!==null&&prev)?100*d/Math.abs(prev):null;
+ var col=(d===null)?'':((d>0)===tGood(k1)?'#1a7f45':'#b0475e');
  document.getElementById('tKpis').innerHTML=
-  '<div class="kpi"><div class="l">'+mn+' &mdash; latest ('+(wks.length?tWkLab(wks[wks.length-1]):'')+')</div><div class="v">'+tFmt(last,m)+'</div></div>'+
-  '<div class="kpi"><div class="l">&Delta; vs prior week</div><div class="v" style="color:'+col+'">'+tFmtD(d,m,false)+(dp!==null?' <span style="font-size:13px">('+tFmtD(dp,m,true)+')</span>':'')+'</div></div>'+
-  '<div class="kpi"><div class="l">Average over range</div><div class="v">'+tFmt(avg,m)+'</div></div>'+
+  '<div class="kpi"><div class="l">'+tMeta(k1)[1]+' — latest ('+(wks.length?tWkLab(wks[wks.length-1]):'')+')</div><div class="v">'+tFmt(last,k1)+'</div></div>'+
+  '<div class="kpi"><div class="l">Δ vs prior week</div><div class="v" style="color:'+col+'">'+tFmtD(d,k1,false)+(dp!==null?' <span style="font-size:13px">('+tFmtD(dp,k1,true)+')</span>':'')+'</div></div>'+
+  '<div class="kpi"><div class="l">Average over range</div><div class="v">'+tFmt(avg,k1)+'</div></div>'+
   '<div class="kpi"><div class="l">Weeks shown</div><div class="v">'+wks.length+'</div></div>';
- var ds=groups.map(function(k,i){return {label:k,data:series[k],borderColor:T_PAL[i%T_PAL.length],
-   backgroundColor:T_PAL[i%T_PAL.length]+'22',borderWidth:2,tension:.25,spanGaps:true,pointRadius:3};});
+ /* chart */
  var ctx=document.getElementById('tChart');
  if(tChart)tChart.destroy();
  tChart=new Chart(ctx,{type:'line',data:{labels:wks.map(tWkLab),datasets:ds},
   options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},
-   plugins:{legend:{display:tState.group!=='total',position:'bottom',labels:{boxWidth:12,font:{size:11}}},
-    tooltip:{callbacks:{label:function(c){return c.dataset.label+': '+tFmt(c.parsed.y,m);}}}},
-   scales:{y:{beginAtZero:false,ticks:{callback:function(v){return tFmt(v,m);}}}}}});
- document.getElementById('tChartTitle').innerHTML=mn+' by week &mdash; '+
-   (tState.group==='total'?'company total':tGroups().filter(function(x){return x[0]===tState.group;})[0][1].toLowerCase())+
+   plugins:{legend:{display:true,position:'bottom',labels:{boxWidth:14,usePointStyle:true,pointStyle:'line',font:{size:11.5},padding:14}},
+    tooltip:{callbacks:{label:function(c){
+      var key=(multi||tState.group==='total')?ms[c.datasetIndex]:ms[0];
+      return c.dataset.label+': '+tFmt(c.parsed.y,key);}}}},
+   scales:scales}});
+ document.getElementById('tChartTitle').innerHTML=
+   (multi?ms.map(function(k){return tMeta(k)[1];}).join(' vs '):tMeta(k1)[1])+' by week — '+
+   ((multi||tState.group==='total')?'company total':tGroups().filter(function(x){return x[0]===tState.group;})[0][1].toLowerCase())+
    ' <span style="font-weight:400;color:var(--mut);font-size:12px">('+
    (tState.days==='all'?'all days':(tState.days==='wd'?'weekdays only':'weekends only'))+')</span>';
- var sh=tState.show,h='<table class="dt"><thead><tr><th style="text-align:left;cursor:default">Week</th>';
- groups.forEach(function(k){h+='<th style="text-align:right;cursor:default">'+k+'</th>';});
- if(tState.group!=='total')h+='<th style="text-align:right;cursor:default">Total</th>';
- if(sh==='val'&&tState.group==='total')h+='<th style="text-align:right;cursor:default">&Delta;</th><th style="text-align:right;cursor:default">&Delta;%</th>';
+ /* table */
+ var h='<table class="dt"><thead><tr><th style="text-align:left;cursor:default">Week</th>';
+ if(multi||tState.group==='total'){
+   ms.forEach(function(k){h+='<th style="text-align:right;cursor:default">'+tMeta(k)[1]+'</th><th style="text-align:right;cursor:default">Δ</th>';});
+ }else{
+   groups.forEach(function(g){h+='<th style="text-align:right;cursor:default">'+g+'</th>';});
+   h+='<th style="text-align:right;cursor:default">Total</th><th style="text-align:right;cursor:default">Δ</th>';}
  h+='</tr></thead><tbody>';
  wks.forEach(function(w,r){
   h+='<tr><td style="text-align:left"><b>'+tWkLab(w)+'</b></td>';
-  groups.forEach(function(k){
-    var v=series[k][r],p=r>0?series[k][r-1]:null,out,cl='';
-    if(sh==='val')out=tFmt(v,m);
-    else{var dd=(v!==null&&p!==null)?v-p:null;
-      if(sh==='pct'&&dd!==null&&p)dd=100*dd/Math.abs(p);
-      out=tFmtD(dd,m,sh==='pct');
-      if(dd!==null&&dd!==0)cl='color:'+((dd>0)===tGood(m)?'#1a7f45':'#b0475e')+';font-weight:600';}
-    h+='<td style="text-align:right;'+cl+'">'+out+'</td>';});
-  if(tState.group!=='total'){var tv=tVal(idx[w],m),tp=r>0?tVal(idx[wks[r-1]],m):null,o2,c2='';
-    if(sh==='val')o2=tFmt(tv,m);
-    else{var d2=(tv!==null&&tp!==null)?tv-tp:null;if(sh==='pct'&&d2!==null&&tp)d2=100*d2/Math.abs(tp);
-      o2=tFmtD(d2,m,sh==='pct');if(d2!==null&&d2!==0)c2='color:'+((d2>0)===tGood(m)?'#1a7f45':'#b0475e')+';font-weight:600';}
-    h+='<td style="text-align:right;background:#f6f8fb;'+c2+'"><b>'+o2+'</b></td>';}
-  if(sh==='val'&&tState.group==='total'){
-    var v2=series['Total'][r],p2=r>0?series['Total'][r-1]:null;
-    var dd2=(v2!==null&&p2!==null)?v2-p2:null, pp=(dd2!==null&&p2)?100*dd2/Math.abs(p2):null;
-    var c3=(dd2===null||dd2===0)?'':'color:'+((dd2>0)===tGood(m)?'#1a7f45':'#b0475e')+';font-weight:600';
-    h+='<td style="text-align:right;'+c3+'">'+tFmtD(dd2,m,false)+'</td><td style="text-align:right;'+c3+'">'+tFmtD(pp,m,true)+'</td>';}
+  if(multi||tState.group==='total'){
+    ms.forEach(function(k){
+      var v=tVal(idx[w],k),p=r>0?tVal(idx[wks[r-1]],k):null;
+      var dd=(v!==null&&p!==null)?v-p:null;
+      var cl=(dd===null||dd===0)?'':'color:'+((dd>0)===tGood(k)?'#1a7f45':'#b0475e')+';font-weight:600';
+      h+='<td style="text-align:right">'+tFmt(v,k)+'</td><td style="text-align:right;'+cl+'">'+tFmtD(dd,k,false)+'</td>';});
+  }else{
+    var k0=ms[0];
+    groups.forEach(function(g){h+='<td style="text-align:right">'+tFmt(series[g][r],k0)+'</td>';});
+    var tv=tVal(idx[w],k0),tp=r>0?tVal(idx[wks[r-1]],k0):null;
+    var d2=(tv!==null&&tp!==null)?tv-tp:null;
+    var c2=(d2===null||d2===0)?'':'color:'+((d2>0)===tGood(k0)?'#1a7f45':'#b0475e')+';font-weight:600';
+    h+='<td style="text-align:right;background:#f6f8fb"><b>'+tFmt(tv,k0)+'</b></td><td style="text-align:right;'+c2+'">'+tFmtD(d2,k0,false)+'</td>';}
   h+='</tr>';});
  h+='</tbody></table>';
  document.getElementById('tTable').innerHTML=h;
- var alloc=(tState.group==='broker'||tState.group==='los')
-   ?('Costs are allocated to each '+(tState.group==='broker'?'broker':'service level')+' in proportion to its share of that day&rsquo;s trips.')
-   :'Margin = revenue &minus; labor &minus; fuel &minus; insurance, matching the other dashboard tabs. Revenue ties exactly to the other tabs; trip counts exclude a small number of zero-revenue days (~1%). Day filters use daily records, so weekday/weekend splits are exact.';
- document.getElementById('tFoot').innerHTML=alloc;
- if(H.on&&H.vol>0){var contrib=(H.rate-H.vcost)*H.vol;
-   document.getElementById('hNote').innerHTML='<b>'+H.name+'</b> adds '+H.vol+' trips/wk at $'+H.rate.toFixed(2)+'/trip = $'+Math.round(H.rate*H.vol).toLocaleString()+'/wk revenue; variable cost $'+H.vcost.toFixed(2)+'/trip &rarr; contribution <b>$'+Math.round(contrib).toLocaleString()+'/wk</b> ($'+(H.rate-H.vcost).toFixed(2)+'/trip). Fixed costs unchanged; assumes existing vans absorb the volume.';}
- else document.getElementById('hNote').innerHTML='Enable to model a new or replacement payer on top of the actual weeks.';
+ document.getElementById('tFoot').innerHTML=(!multi&&(tState.group==='broker'||tState.group==='los'))
+   ?('Costs are allocated to each '+(tState.group==='broker'?'broker':'service level')+' in proportion to its share of that day’s trips. Margin = revenue − labor − fuel − insurance.')
+   :'Margin = revenue − labor − fuel − insurance, matching the other dashboard tabs. Revenue ties exactly to the other tabs; trip counts exclude a small number of zero-revenue days (~1%).'
+   +(multi?' Left axis = '+tMeta(ms[0])[1]+(ms.length>1?', right axis = '+tMeta(ms[1])[1]:'')+(ms.length>2?'; '+tMeta(ms[2])[1]+' is plotted on its own hidden scale (hover for values).':'.'):'');
 }
 function tSetDays(d){tState.days=d;document.querySelectorAll('#tDays button').forEach(function(b){b.classList.toggle('active',b.dataset.d===d);});
  tFillWeeks();tRender();}
-function tSetShow(s){tState.show=s;document.querySelectorAll('#tShow button').forEach(function(b){b.classList.toggle('active',b.dataset.s===s);});tRender();}
 function tFillWeeks(){
  var w=tWeeks(),f=document.getElementById('tFrom'),t=document.getElementById('tTo');
  var pf=tState.from,pt=tState.to;
@@ -682,19 +708,18 @@ function tFillWeeks(){
  if(pt&&w.indexOf(pt)>=0)t.value=pt;else t.value=w[w.length-1];
  tState.from=f.value;tState.to=t.value;}
 function tInit(){
- var ms=document.getElementById('tMetric');
- ms.innerHTML=tMetrics().map(function(x){return '<option value="'+x[0]+'">'+x[1]+'</option>';}).join('');
- ms.value=tState.metric;ms.onchange=function(){tState.metric=this.value;tRender();};
  var gs=document.getElementById('tGroup');
  gs.innerHTML=tGroups().map(function(x){return '<option value="'+x[0]+'">'+x[1]+'</option>';}).join('');
  gs.value=tState.group;gs.onchange=function(){tState.group=this.value;tRender();};
- var R=tPayerRates(),hm=document.getElementById('hMirror');
- hm.innerHTML='<option value="">(custom)</option>'+Object.keys(R).sort().map(function(k){
-   return '<option value="'+k+'">'+k+' ($'+R[k].toFixed(2)+')</option>';}).join('');
- tFillWeeks();
+ tBuildMenu();tSyncGroupEnabled();tFillWeeks();
  document.getElementById('tFrom').onchange=function(){tState.from=this.value;tRender();};
  document.getElementById('tTo').onchange=function(){tState.to=this.value;tRender();};
+ document.addEventListener('click',function(e){
+   var m=document.getElementById('tMetricMenu');if(!m)return;
+   var box=document.getElementById('tMetricBtn');
+   if(m.style.display!=='none'&&!m.contains(e.target)&&e.target!==box)m.style.display='none';});
  tRender();}
+
 </script>
 
 </body></html>
