@@ -521,7 +521,9 @@ function tMetrics(){return [
  ['vans','Vans / day (avg)','count'],['tpv','Trips per van','count'],['rpv','Revenue per van','permoney'],
  ['pay','Labor $','money'],['fuel','Fuel $','money'],['ins','Insurance $','money'],
  ['rpt','Revenue / trip','permoney'],['lpt','Labor / trip','permoney'],['fpt','Fuel / trip','permoney'],
- ['cpt','Total cost / trip','permoney']];}
+ ['cpt','Total cost / trip','permoney'],
+ ['paypctr','Labor % of revenue','pct'],['fuelpctr','Fuel % of revenue','pct'],
+ ['inspctr','Insurance % of revenue','pct'],['costpctr','Total cost % of revenue','pct']];}
 function tMeta(k){var a=tMetrics();for(var i=0;i<a.length;i++)if(a[i][0]===k)return a[i];return a[0];}
 function tGroups(){return [['total','Company total'],['broker','By broker'],['driver','By driver'],['los','By level of service']];}
 function tIsWknd(ds){var p=ds.split('-');var d=new Date(+p[0],+p[1]-1,+p[2]);var w=d.getDay();return w===0||w===6;}
@@ -564,7 +566,11 @@ function tVal(o,m){
   case 'rpt':return o.trips>0?o.rev/o.trips:null;
   case 'lpt':return o.trips>0?o.pay/o.trips:null;
   case 'fpt':return o.trips>0?o.fuel/o.trips:null;
-  case 'cpt':return o.trips>0?(o.pay+o.fuel+o.ins)/o.trips:null;}
+  case 'cpt':return o.trips>0?(o.pay+o.fuel+o.ins)/o.trips:null;
+  case 'paypctr':return o.rev>0?100*o.pay/o.rev:null;
+  case 'fuelpctr':return o.rev>0?100*o.fuel/o.rev:null;
+  case 'inspctr':return o.rev>0?100*o.ins/o.rev:null;
+  case 'costpctr':return o.rev>0?100*(o.pay+o.fuel+o.ins)/o.rev:null;}
  return null;}
 function tFmt(v,m){
  if(v===null||v===undefined||isNaN(v))return '—';
@@ -583,7 +589,7 @@ function tFmtD(v,m,pct){
  if(u==='permoney')return s+'$'+v.toFixed(2);
  if(m==='trips')return s+Math.round(v);
  return s+v.toFixed(1);}
-function tGood(m){return ['pay','fuel','ins','lpt','fpt','cpt'].indexOf(m)<0;}
+function tGood(m){return ['pay','fuel','ins','lpt','fpt','cpt','paypctr','fuelpctr','inspctr','costpctr'].indexOf(m)<0;}
 function tWkLab(w){var p=w.split('-');return (+p[1])+'/'+(+p[2]);}
 /* ---- metric checklist ---- */
 function tToggleMenu(e){e.stopPropagation();var m=document.getElementById('tMetricMenu');
