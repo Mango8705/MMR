@@ -79,8 +79,8 @@ table.sa td.cell.drag{opacity:.5}
 .note{font-size:11.5px;color:#9ca3af;margin-top:12px;line-height:1.5;}
 @media(max-width:720px){.kpis{grid-template-columns:repeat(2,1fr)}}
 </style></head><body>
-<header style="display:flex;align-items:center;justify-content:space-between;gap:12px"><div><h1>My Medi Rides — Operations Dashboard</h1><p>Driver revenue vs. direct costs (Mar 16 – Jul 29, 2026) · Pickup demand by zip</p></div><button onclick="doRefresh(this)" title="Reload the latest published data for this tab" style="background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.45);border-radius:6px;padding:7px 13px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap">&#x21bb; Refresh</button></header>
-<div class="tabs"><div class="tab active" data-tab="fin" onclick="showTab('fin')">Financials</div><div class="tab" data-tab="ue" onclick="showTab('ue')">Unit Economics</div><div class="tab" data-tab="brk" onclick="showTab('brk')">By Broker</div><div class="tab" data-tab="prod" onclick="showTab('prod')">Productivity</div><div class="tab" data-tab="bd" onclick="showTab('bd')">BD Map</div><div class="tab" data-tab="trend" onclick="showTab('trend')">Trends</div></div>
+<header style="display:flex;align-items:center;justify-content:space-between;gap:12px"><div><h1>My Medi Rides — Operations Dashboard</h1><p>Driver revenue vs. direct costs (Mar 16 &ndash; Jul 29, 2026) &middot; Expenses (Mar 1 &ndash; Jul 31, 2026) &middot; BD targeting</p></div><button onclick="doRefresh(this)" title="Reload the latest published data for this tab" style="background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.45);border-radius:6px;padding:7px 13px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap">&#x21bb; Refresh</button></header>
+<div class="tabs"><div class="tab active" data-tab="fin" onclick="showTab('fin')">Financials</div><div class="tab" data-tab="ue" onclick="showTab('ue')">Unit Economics</div><div class="tab" data-tab="brk" onclick="showTab('brk')">By Broker</div><div class="tab" data-tab="exp" onclick="showTab('exp')">Expenses</div><div class="tab" data-tab="prod" onclick="showTab('prod')">Productivity</div><div class="tab" data-tab="bd" onclick="showTab('bd')">BD Map</div><div class="tab" data-tab="trend" onclick="showTab('trend')">Trends</div></div>
 
 <div class="wrap" id="fin">
  <div class="controls"><div class="seg" id="grain">
@@ -135,6 +135,39 @@ table.sa td.cell.drag{opacity:.5}
  <div class="card"><h3 id="pcharttitle">Productive vs. idle time by driver</h3><div style="height:430px"><canvas id="pchart"></canvas></div></div>
  <div class="card"><h3 id="ptabletitle">Hours by driver</h3><table class="dt" id="ptable"><thead></thead><tbody></tbody></table>
   <p class="note">From RouteGenie shift telemetry (Mar 16 – Jul 29, 2026). <b>Productive</b> = Loaded (passenger onboard) + En-route (driving to pickup). <b>Idle</b> = RouteGenie "Wait" time (on the clock, not moving a passenger or en route). <b>Utilization</b> = Productive ÷ (Productive + Idle), shaded red (low) → green (high). Steve's shifts have no route timeline in RouteGenie, so he shows no data. Click any header to sort.</p></div>
+</div>
+
+<div class="wrap" id="exp" style="display:none">
+ <div class="controls" style="flex-wrap:wrap;gap:16px;align-items:flex-end">
+  <div style="display:flex;flex-direction:column;gap:5px">
+   <label style="font-size:10.5px;text-transform:uppercase;letter-spacing:.04em;color:var(--mut);font-weight:600">Period</label>
+   <div class="seg" id="xGrain">
+    <button data-g="month" class="active" onclick="xSetGrain('month')">Monthly</button>
+    <button data-g="week" onclick="xSetGrain('week')">Weekly</button></div>
+  </div>
+  <div style="display:flex;flex-direction:column;gap:5px">
+   <label style="font-size:10.5px;text-transform:uppercase;letter-spacing:.04em;color:var(--mut);font-weight:600">Chart categories (up to 6)</label>
+   <div style="position:relative">
+    <button type="button" id="xCatBtn" onclick="xToggleMenu(event)" style="padding:7px 12px;border:1px solid var(--line);border-radius:8px;background:#fff;font-size:13px;cursor:pointer;min-width:250px;text-align:left">&nbsp;</button>
+    <div id="xCatMenu" style="display:none;position:absolute;z-index:60;top:100%;left:0;margin-top:4px;background:#fff;border:1px solid var(--line);border-radius:8px;box-shadow:0 6px 20px rgba(0,0,0,.13);padding:6px;max-height:320px;overflow:auto;min-width:290px"></div>
+   </div>
+  </div>
+  <div style="display:flex;flex-direction:column;gap:5px">
+   <label style="font-size:10.5px;text-transform:uppercase;letter-spacing:.04em;color:var(--mut);font-weight:600">From</label>
+   <select id="xFrom" title="From period" onchange="xRender()"></select>
+  </div>
+  <div style="display:flex;flex-direction:column;gap:5px">
+   <label style="font-size:10.5px;text-transform:uppercase;letter-spacing:.04em;color:var(--mut);font-weight:600">To</label>
+   <select id="xTo" title="To period" onchange="xRender()"></select>
+  </div>
+  <label style="font-size:12px;display:flex;align-items:center;gap:6px;padding-bottom:7px;cursor:pointer" title="The register starts 03/01 and ends 07/31, so the first and last week are not full weeks.">
+   <input type="checkbox" id="xExcl" onchange="xRender()"> Hide partial periods</label>
+ </div>
+ <div class="kpis" id="xKpis" style="max-width:100%;grid-template-columns:repeat(4,1fr)"></div>
+ <div class="card"><h3 id="xChartTitle">Expense trend</h3><div style="height:340px"><canvas id="xchart"></canvas></div>
+  <p class="note" id="xChartNote"></p></div>
+ <div class="card"><h3 id="xTableTitle">Expenses by category</h3><div id="xtable"></div>
+  <p class="note">Cash basis &mdash; dated when money left the bank, not when the cost was incurred. Fuel is billed by Wright Express roughly monthly in arrears and payroll runs weekly, so weekly figures are lumpy by nature. Source: categorised Fifth&nbsp;Third (x4042, x6744, x6751) and American&nbsp;Express (x71010, x71028) transactions, 01 Mar &ndash; 31 Jul 2026. Transfers between own accounts, credit-card payments and bounced/re-presented debits are excluded.</p></div>
 </div>
 
 <div class="wrap" id="bd" style="display:none">
@@ -491,10 +524,10 @@ function sOptimize(){sPush();
 function sReset(){sModel=sBuild(sDay);sHold=[];sOrigNet=sDayNet();sClearHist();sRender();}
 function sSetDay(day){sDay=day;document.querySelectorAll('#sgrain button').forEach(b=>b.classList.toggle('active',b.dataset.d===day));sModel=sBuild(day);sHold=[];sOrigNet=sDayNet();sClearHist();sRender();}
 function sInit(){const seg=document.getElementById('sgrain');seg.innerHTML=SHIFT.days.map((d,i)=>'<button data-d="'+d+'" class="'+(i===0?'active':'')+'" onclick="sSetDay(\''+d+'\')">'+d+'</button>').join('');sModel=sBuild(sDay);sHold=[];sOrigNet=sDayNet();sClearHist();sRender();}
-function showTab(t){['fin','ue','brk','prod','bd','trend'].forEach(v=>document.getElementById(v).style.display=v===t?'':'none');document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('active',x.dataset.tab===t));if(t==='brk'&&!window._bi){window._bi=1;bSetGrain('total');}if(t==='ue'&&!window._ui){window._ui=1;ueSetGrain('total');}if(t==='prod'&&!window._pi){window._pi=1;pRender();}if(t==='trend'&&!window._ti){window._ti=1;tInit();}}
+function showTab(t){['fin','ue','brk','exp','prod','bd','trend'].forEach(v=>document.getElementById(v).style.display=v===t?'':'none');document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('active',x.dataset.tab===t));if(t==='brk'&&!window._bi){window._bi=1;bSetGrain('total');}if(t==='ue'&&!window._ui){window._ui=1;ueSetGrain('total');}if(t==='prod'&&!window._pi){window._pi=1;pRender();}if(t==='trend'&&!window._ti){window._ti=1;tInit();}if(t==='exp'&&!window._xi){window._xi=1;xInit();}}
 function doRefresh(btn){var a=document.querySelector('.tab.active');a=a?a.dataset.tab:'fin';if(btn){btn.textContent='\u21bb Refreshing\u2026';}if(a==='bd'){var f=document.querySelector('.mapframe');var b=f.src.split('?')[0];f.src=b+'?t='+Date.now();setTimeout(function(){if(btn)btn.textContent='\u21bb Refresh';},900);}else{location.href=location.pathname+'?t='+Date.now()+'#'+a;}}
 setGrain('total');
-(function(){var h=(location.hash||'').replace('#','');if(['fin','ue','brk','bd','trend','prod','ue'].indexOf(h)>=0)showTab(h);})();
+(function(){var h=(location.hash||'').replace('#','');if(['fin','ue','brk','exp','prod','bd','trend'].indexOf(h)>=0)showTab(h);})();
 </script><script>
 /* ================= TRENDS (week-over-week) ================= */
 var tState={metrics:['mgnpct'],group:'total',days:'all',from:null,to:null};
@@ -785,6 +818,166 @@ function tInit(){
    if(m.style.display!=='none'&&!m.contains(e.target)&&e.target!==box)m.style.display='none';});
  tRender();}
 
+</script>
+
+
+<script>
+/* ================= EXPENSES =================
+   Data: categorised bank + card register, 01 Mar - 31 Jul 2026 (cash basis).
+   Chart follows one rule that matters here: every series is dollars, so there is
+   a SINGLE y-axis. Categorical hues are assigned in fixed order and never cycled -
+   the picker caps at 6 series, which is the length of the validated palette. */
+var EXP = {"from":"2026-03-01","to":"2026-07-31","cats":["Payroll Expenses","Fuel Expense","Insurance","Auto Repair","Miscellaneous Expenses","Advertising/Promotional","Stretcher","Software - RouteGenie","Software - Fleet (Autosist)","Worker's Comp","Merchandise & Supplies","Bank Service Fee","DMV","Business Service","Employee Recruitment Expense","Unknown","Maintenance","Uber","Car Wash","Meals","Dues & Subscriptions","Professional Training & Development","Tolls","Business Service - Apla Solutions","Credit Card Processing Fees","Processing Charge - Clover","Medical Equipment","Other Services - Government"],"week":{"p":["2026-02-23","2026-03-02","2026-03-09","2026-03-16","2026-03-23","2026-03-30","2026-04-06","2026-04-13","2026-04-20","2026-04-27","2026-05-04","2026-05-11","2026-05-18","2026-05-25","2026-06-01","2026-06-08","2026-06-15","2026-06-22","2026-06-29","2026-07-06","2026-07-13","2026-07-20","2026-07-27"],"d":{"Payroll Expenses":[0.0,8875.15,9429.66,8256.27,9661.74,9911.11,10245.86,10126.34,9474.94,10606.24,10779.01,9552.13,9224.13,10499.64,733.58,17721.04,10243.96,10074.56,9261.27,9017.79,7015.61,5665.42,6108.49],"Fuel Expense":[0.0,0.0,0.0,0.0,8042.76,21.38,50.0,11.76,0.0,8013.66,0.0,36.0,4000.0,7964.4,75.0,0.0,0.0,12611.07,34.07,0.0,0.0,208.34,12116.6],"Insurance":[16486.4,0.0,1000.42,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,15075.34,0.0,0.0,9115.25,0.0,0.0,0.0,9571.02,0.0,0.0,0.0,0.0],"Auto Repair":[0.0,527.99,2335.65,2650.38,2903.81,1240.0,610.0,951.54,0.0,391.4,1259.55,5906.39,672.67,42.8,0.0,554.57,1827.95,1076.89,1802.08,1310.17,647.91,416.27,703.84],"Miscellaneous Expenses":[0.0,0.0,0.0,0.0,0.0,8500.0,0.0,0.0,0.0,0.0,6676.0,5107.6,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],"Advertising/Promotional":[135.72,0.0,500.0,81.0,570.0,226.87,0.0,500.0,581.0,295.51,0.0,500.0,166.0,570.0,168.52,500.0,166.0,570.0,218.75,0.0,596.75,666.0,70.0],"Stretcher":[0.0,0.0,0.0,0.0,0.0,0.0,2060.0,0.0,0.0,0.0,0.0,0.0,2000.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,2000.0],"Software - RouteGenie":[0.0,738.2,0.0,0.0,0.0,0.0,738.56,0.0,0.0,0.0,761.43,0.0,0.0,0.0,760.82,0.0,0.0,0.0,0.0,761.01,0.0,0.0,0.0],"Software - Fleet (Autosist)":[0.0,0.0,720.0,0.0,0.0,0.0,720.0,0.0,0.0,0.0,0.0,720.0,0.0,0.0,0.0,720.0,0.0,0.0,0.0,720.0,0.0,0.0,0.0],"Worker's Comp":[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,1060.67,0.0,0.0,0.0,0.0,1000.0,0.0,0.0,0.0,1121.33,0.0,0.0,0.0,0.0],"Merchandise & Supplies":[0.0,5.38,78.05,147.99,100.39,367.15,7.95,656.73,137.34,28.01,0.0,119.32,183.06,42.89,99.0,83.62,272.0,0.0,0.0,85.59,124.93,75.08,65.49],"Bank Service Fee":[0.0,433.85,69.0,0.0,0.0,0.0,538.59,0.0,0.0,56.74,341.91,106.0,6.0,37.0,300.2,124.6,12.0,37.0,37.0,478.99,0.0,0.0,37.0],"DMV":[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,510.3,0.0,0.0,0.0,1400.0,0.0,0.0,0.0,0.0,0.0,207.55,0.0,0.0,0.0,0.0],"Business Service":[0.0,0.0,3.0,0.0,126.0,3.0,3.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,723.57,509.11,624.4],"Employee Recruitment Expense":[0.0,0.0,0.0,0.0,138.0,306.98,207.38,0.0,172.3,195.0,279.4,281.3,0.0,0.0,70.0,0.0,0.0,0.0,65.0,0.0,0.0,0.0,0.0],"Unknown":[0.0,0.0,129.52,0.0,0.0,0.0,50.0,0.0,0.0,0.0,0.0,0.0,0.0,40.0,220.0,95.0,250.0,571.0,240.0,0.0,0.0,60.0,0.0],"Maintenance":[0.0,0.0,0.0,0.0,0.0,120.0,120.0,0.0,240.0,0.0,150.0,0.0,0.0,0.0,120.0,0.0,0.0,250.0,150.0,200.0,0.0,0.0,0.0],"Uber":[0.0,54.88,147.84,53.87,0.0,12.95,51.12,25.92,152.59,0.0,66.9,50.95,0.0,0.0,0.0,65.14,34.96,111.91,58.2,38.91,10.99,30.91,39.88],"Car Wash":[0.0,19.07,95.35,272.57,0.0,114.42,0.0,0.0,19.07,114.42,0.0,0.0,19.07,114.42,0.0,0.0,19.07,0.0,38.14,0.0,0.0,17.99,35.98],"Meals":[0.0,0.0,225.48,31.03,139.57,225.5,0.0,0.0,0.0,13.2,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,64.19,3.0,0.0,0.0,0.0],"Dues & Subscriptions":[15.12,0.0,0.0,35.14,94.99,15.12,0.0,19.99,35.14,90.12,0.0,0.0,35.14,75.0,15.12,0.0,15.15,19.99,90.12,0.0,19.99,35.14,75.0],"Professional Training & Development":[0.0,14.95,0.0,130.0,74.95,39.95,20.0,80.0,0.0,0.0,14.95,106.25,40.0,0.0,0.0,0.0,0.0,0.0,29.9,0.0,51.0,0.0,0.0],"Tolls":[0.0,0.0,0.0,0.0,0.0,0.0,210.35,30.0,30.0,30.0,60.0,45.0,30.0,15.0,15.0,30.0,30.0,15.0,0.0,30.0,0.0,0.0,30.0],"Business Service - Apla Solutions":[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,500.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],"Credit Card Processing Fees":[0.0,72.32,0.0,0.0,0.0,68.19,0.0,0.0,0.0,0.0,148.25,0.0,0.0,0.0,66.44,0.0,0.0,0.0,53.67,0.0,0.0,0.0,0.0],"Processing Charge - Clover":[0.0,0.0,29.95,0.0,0.0,0.0,0.0,29.95,0.0,0.0,0.0,29.95,0.0,0.0,0.0,29.95,0.0,0.0,0.0,0.0,29.95,0.0,0.0],"Medical Equipment":[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,15.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],"Other Services - Government":[0.0,12.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]},"partial":[true,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,true]},"month":{"p":["2026-03","2026-04","2026-05","2026-06","2026-07"],"d":{"Payroll Expenses":[36222.82,50364.49,40054.91,38773.14,37068.58],"Fuel Expense":[8064.14,8075.42,12000.4,12716.07,12329.01],"Insurance":[17486.82,0.0,15075.34,9115.25,9571.02],"Auto Repair":[8417.83,3192.94,7881.41,3459.41,4880.27],"Miscellaneous Expenses":[0.0,8500.0,11783.6,0.0,0.0],"Advertising/Promotional":[1286.72,1377.87,1461.51,1404.52,1551.5],"Stretcher":[0.0,2060.0,2000.0,0.0,2000.0],"Software - RouteGenie":[738.2,738.56,761.43,760.82,761.01],"Software - Fleet (Autosist)":[720.0,720.0,720.0,720.0,720.0],"Worker's Comp":[0.0,1060.67,0.0,2121.33,0.0],"Merchandise & Supplies":[673.7,839.37,361.19,454.62,351.09],"Bank Service Fee":[502.85,558.33,527.91,473.8,552.99],"DMV":[0.0,510.3,1400.0,141.05,66.5],"Business Service":[132.0,3.0,0.0,0.0,1857.08],"Employee Recruitment Expense":[344.94,674.72,560.7,70.0,65.0],"Unknown":[129.52,50.0,40.0,1376.0,60.0],"Maintenance":[120.0,360.0,150.0,520.0,200.0],"Uber":[256.59,242.58,117.85,270.21,120.69],"Car Wash":[501.41,133.49,133.49,57.21,53.97],"Meals":[621.58,13.2,0.0,0.0,67.19],"Dues & Subscriptions":[145.25,145.25,125.26,125.26,145.25],"Professional Training & Development":[259.85,100.0,161.2,14.95,65.95],"Tolls":[0.0,300.35,150.0,90.0,60.0],"Business Service - Apla Solutions":[0.0,0.0,500.0,0.0,0.0],"Credit Card Processing Fees":[72.32,68.19,148.25,66.44,53.67],"Processing Charge - Clover":[29.95,29.95,29.95,29.95,29.95],"Medical Equipment":[0.0,0.0,15.0,0.0,0.0],"Other Services - Government":[12.0,0.0,0.0,0.0,0.0]},"partial":[false,false,false,false,false]},"total":398407.32,"n":524};
+/* validated categorical theme (CVD-checked): blue, orange, aqua, yellow, magenta, green */
+var X_PAL = ['#2a78d6','#eb6834','#1baf7a','#eda100','#e87ba4','#008300'];
+var X_MAX = 6;
+var xState = {grain:'month', cats:[], from:null, to:null};
+var xChart = null;
+
+function xMoney(v){return '$'+(Math.round(v)).toLocaleString();}
+function xMoney2(v){return '$'+v.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});}
+function xLabel(p){
+  if(xState.grain==='month'){var a=p.split('-');return ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][+a[1]-1]+' '+a[0];}
+  var d=new Date(p+'T00:00:00');
+  return ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][d.getMonth()]+' '+d.getDate();
+}
+function xG(){return EXP[xState.grain];}
+
+/* periods currently in scope, after the range selects and the partial filter */
+function xPeriods(){
+  var G=xG(), ps=G.p.slice(), i0=0, i1=ps.length-1;
+  if(xState.from!==null){var k=ps.indexOf(xState.from); if(k>=0)i0=k;}
+  if(xState.to!==null){var k2=ps.indexOf(xState.to); if(k2>=0)i1=k2;}
+  if(i1<i0){var t=i0;i0=i1;i1=t;}
+  var out=[];
+  var hide=document.getElementById('xExcl'); hide=hide?hide.checked:false;
+  for(var i=i0;i<=i1;i++){ if(hide&&G.partial[i])continue; out.push({p:ps[i],i:i,partial:G.partial[i]}); }
+  return out;
+}
+function xVal(cat,idx){var a=xG().d[cat];return a?a[idx]:0;}
+
+function xInit(){
+  xState.cats = EXP.cats.slice(0,3);
+  xBuildRange(); xBuildMenu(); xRender();
+}
+
+function xBuildRange(){
+  var G=xG(), f=document.getElementById('xFrom'), t=document.getElementById('xTo');
+  f.innerHTML=''; t.innerHTML='';
+  G.p.forEach(function(p){
+    var o1=document.createElement('option'); o1.value=p; o1.textContent=xLabel(p)+(G.partial[G.p.indexOf(p)]?' (partial)':''); f.appendChild(o1);
+    var o2=document.createElement('option'); o2.value=p; o2.textContent=o1.textContent; t.appendChild(o2);
+  });
+  f.value = xState.from!==null&&G.p.indexOf(xState.from)>=0 ? xState.from : G.p[0];
+  t.value = xState.to!==null&&G.p.indexOf(xState.to)>=0 ? xState.to : G.p[G.p.length-1];
+  xState.from=f.value; xState.to=t.value;
+  f.onchange=function(){xState.from=f.value;xRender();};
+  t.onchange=function(){xState.to=t.value;xRender();};
+}
+
+function xBuildMenu(){
+  var m=document.getElementById('xCatMenu'); m.innerHTML='';
+  EXP.cats.forEach(function(c){
+    var on=xState.cats.indexOf(c)>=0;
+    var row=document.createElement('label');
+    row.style.cssText='display:flex;align-items:center;gap:8px;padding:5px 8px;font-size:12.5px;cursor:pointer;border-radius:6px;white-space:nowrap';
+    row.onmouseover=function(){row.style.background='#f4f6f8';};
+    row.onmouseout=function(){row.style.background='';};
+    var cb=document.createElement('input'); cb.type='checkbox'; cb.checked=on;
+    cb.onchange=function(){
+      var i=xState.cats.indexOf(c);
+      if(i>=0){xState.cats.splice(i,1);}
+      else{ if(xState.cats.length>=X_MAX){cb.checked=false; return;} xState.cats.push(c); }
+      xBuildMenu(); xRender();
+    };
+    var sw=document.createElement('i');
+    var ci=xState.cats.indexOf(c);
+    sw.style.cssText='width:10px;height:10px;border-radius:2px;flex:none;background:'+(ci>=0?X_PAL[ci]:'#e5e7eb');
+    row.appendChild(cb); row.appendChild(sw); row.appendChild(document.createTextNode(c));
+    m.appendChild(row);
+  });
+  var b=document.getElementById('xCatBtn');
+  b.textContent = xState.cats.length ? (xState.cats.length+' selected: '+xState.cats.join(', ')).slice(0,52)+((xState.cats.join(', ').length>38)?'\u2026':'') : 'Choose categories\u2026';
+}
+function xToggleMenu(e){
+  e.stopPropagation();
+  var m=document.getElementById('xCatMenu');
+  m.style.display = m.style.display==='none' ? 'block' : 'none';
+}
+document.addEventListener('click',function(e){
+  var m=document.getElementById('xCatMenu');
+  if(m&&m.style.display!=='none'&&!m.contains(e.target)&&e.target.id!=='xCatBtn')m.style.display='none';
+});
+
+function xSetGrain(g){
+  if(xState.grain===g)return;
+  xState.grain=g; xState.from=null; xState.to=null;
+  document.querySelectorAll('#xGrain button').forEach(function(b){b.classList.toggle('active',b.dataset.g===g);});
+  xBuildRange(); xRender();
+}
+
+function xRender(){
+  var P=xPeriods(); if(!P.length)return;
+  var labels=P.map(function(o){return xLabel(o.p);});
+
+  /* ---- KPI tiles ---- */
+  var grand=0, byCat={};
+  EXP.cats.forEach(function(c){ var t=0; P.forEach(function(o){t+=xVal(c,o.i);}); byCat[c]=t; grand+=t; });
+  var top=EXP.cats.slice().sort(function(a,b){return byCat[b]-byCat[a];})[0];
+  var per = grand/P.length;
+  var k=document.getElementById('xKpis');
+  k.innerHTML =
+   '<div class="kpi"><div class="l">Total expense</div><div class="v">'+xMoney(grand)+'</div></div>'+
+   '<div class="kpi"><div class="l">Per '+(xState.grain==='month'?'month':'week')+' (avg)</div><div class="v">'+xMoney(per)+'</div></div>'+
+   '<div class="kpi"><div class="l">Largest category</div><div class="v" style="font-size:17px">'+top+'</div><div class="l" style="margin-top:2px;text-transform:none">'+xMoney(byCat[top])+' &middot; '+(byCat[top]/grand*100).toFixed(1)+'%</div></div>'+
+   '<div class="kpi"><div class="l">Periods shown</div><div class="v">'+P.length+'</div></div>';
+
+  /* ---- chart: one y-axis, every series in dollars ---- */
+  var ds = xState.cats.map(function(c,i){
+    return {label:c, data:P.map(function(o){return xVal(c,o.i);}),
+            borderColor:X_PAL[i], backgroundColor:X_PAL[i]+'22',
+            borderWidth:2, tension:.25, spanGaps:true, pointRadius:3, pointHoverRadius:6, pointBackgroundColor:X_PAL[i]};
+  });
+  document.getElementById('xChartTitle').textContent =
+    (xState.cats.length===1 ? xState.cats[0] : 'Expense trend') + ' \u2014 ' + (xState.grain==='month'?'monthly':'weekly');
+  document.getElementById('xChartNote').textContent =
+    xState.cats.length ? 'All series are dollars on a single axis, so heights are directly comparable.'
+                       : 'Pick one or more categories above to plot.';
+  if(xChart)xChart.destroy();
+  xChart = new Chart(document.getElementById('xchart').getContext('2d'),{
+    type:'line',
+    data:{labels:labels, datasets:ds},
+    options:{responsive:true, maintainAspectRatio:false, interaction:{mode:'index',intersect:false},
+      plugins:{
+        legend:{display:ds.length>1, position:'bottom', labels:{boxWidth:10,boxHeight:10,usePointStyle:true,pointStyle:'rectRounded',font:{size:11.5}}},
+        tooltip:{callbacks:{label:function(c){return c.dataset.label+': '+xMoney2(c.parsed.y);}}}
+      },
+      scales:{
+        x:{grid:{display:false},ticks:{font:{size:11},maxRotation:0,autoSkip:true}},
+        y:{beginAtZero:true, grid:{color:'#f0f2f4'}, border:{display:false},
+           ticks:{font:{size:11},callback:function(v){return xMoney(v);}}}
+      }}
+  });
+
+  /* ---- table ---- */
+  var h='<table class="dt"><thead><tr><th>Category</th>';
+  P.forEach(function(o){h+='<th'+(o.partial?' title="partial period"':'')+'>'+xLabel(o.p)+(o.partial?'*':'')+'</th>';});
+  h+='<th>Total</th><th>% of total</th></tr></thead><tbody>';
+  EXP.cats.slice().sort(function(a,b){return byCat[b]-byCat[a];}).forEach(function(c){
+    if(byCat[c]===0)return;
+    var ci=xState.cats.indexOf(c);
+    var sw = ci>=0 ? '<i style="display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:6px;background:'+X_PAL[ci]+'"></i>' : '';
+    h+='<tr><td>'+sw+c+'</td>';
+    P.forEach(function(o){var v=xVal(c,o.i); h+='<td>'+(v?xMoney2(v):'&mdash;')+'</td>';});
+    h+='<td style="font-weight:700">'+xMoney2(byCat[c])+'</td><td>'+(byCat[c]/grand*100).toFixed(1)+'%</td></tr>';
+  });
+  h+='</tbody><tfoot><tr style="border-top:2px solid var(--line)"><td style="font-weight:700">TOTAL</td>';
+  P.forEach(function(o){var t=0;EXP.cats.forEach(function(c){t+=xVal(c,o.i);});h+='<td style="font-weight:700">'+xMoney2(t)+'</td>';});
+  h+='<td style="font-weight:700">'+xMoney2(grand)+'</td><td style="font-weight:700">100.0%</td></tr></tfoot></table>';
+  document.getElementById('xtable').innerHTML=h;
+  document.getElementById('xTableTitle').textContent='Expenses by category \u2014 '+(xState.grain==='month'?'monthly':'weekly')+
+    (P.some(function(o){return o.partial;})?'  (* partial period)':'');
+}
 </script>
 
 </body></html>
