@@ -140,12 +140,6 @@ table.sa td.cell.drag{opacity:.5}
 <div class="wrap" id="exp" style="display:none">
  <div class="controls" style="flex-wrap:wrap;gap:16px;align-items:flex-end">
   <div style="display:flex;flex-direction:column;gap:5px">
-   <label style="font-size:10.5px;text-transform:uppercase;letter-spacing:.04em;color:var(--mut);font-weight:600">Period</label>
-   <div class="seg" id="xGrain">
-    <button data-g="month" class="active" onclick="xSetGrain('month')">Monthly</button>
-    <button data-g="week" onclick="xSetGrain('week')">Weekly</button></div>
-  </div>
-  <div style="display:flex;flex-direction:column;gap:5px">
    <label style="font-size:10.5px;text-transform:uppercase;letter-spacing:.04em;color:var(--mut);font-weight:600">Chart categories (up to 6)</label>
    <div style="position:relative">
     <button type="button" id="xCatBtn" onclick="xToggleMenu(event)" style="padding:7px 12px;border:1px solid var(--line);border-radius:8px;background:#fff;font-size:13px;cursor:pointer;min-width:250px;text-align:left">&nbsp;</button>
@@ -160,14 +154,12 @@ table.sa td.cell.drag{opacity:.5}
    <label style="font-size:10.5px;text-transform:uppercase;letter-spacing:.04em;color:var(--mut);font-weight:600">To</label>
    <select id="xTo" title="To period" onchange="xRender()"></select>
   </div>
-  <label style="font-size:12px;display:flex;align-items:center;gap:6px;padding-bottom:7px;cursor:pointer" title="The register starts 03/01 and ends 07/31, so the first and last week are not full weeks.">
-   <input type="checkbox" id="xExcl" onchange="xRender()"> Hide partial periods</label>
  </div>
  <div class="kpis" id="xKpis" style="max-width:100%;grid-template-columns:repeat(4,1fr)"></div>
- <div class="card"><h3 id="xChartTitle">Expense trend</h3><div style="height:340px"><canvas id="xchart"></canvas></div>
+ <div class="card"><h3 id="xChartTitle">Expense by month</h3><div style="height:340px"><canvas id="xchart"></canvas></div>
   <p class="note" id="xChartNote"></p></div>
  <div class="card"><h3 id="xTableTitle">Expenses by category</h3><div id="xtable"></div>
-  <p class="note">Cash basis &mdash; dated when money left the bank, not when the cost was incurred. Fuel is billed by Wright Express roughly monthly in arrears and payroll runs weekly, so weekly figures are lumpy by nature. Source: categorised Fifth&nbsp;Third (x4042, x6744, x6751) and American&nbsp;Express (x71010, x71028) transactions, 01 Mar &ndash; 31 Jul 2026. Transfers between own accounts, credit-card payments and bounced/re-presented debits are excluded.</p></div>
+  <p class="note">Cash basis &mdash; dated when money left the bank, not when the cost was incurred. Fuel is billed by Wright Express roughly monthly in arrears, so a month can carry more or less than one month of pumping. Source: categorised Fifth&nbsp;Third (x4042, x6744, x6751) and American&nbsp;Express (x71010, x71028) transactions, 01 Mar &ndash; 31 Jul 2026. Transfers between own accounts, credit-card payments and bounced/re-presented debits are excluded.</p></div>
 </div>
 
 <div class="wrap" id="bd" style="display:none">
@@ -747,7 +739,7 @@ function tRender(){
  if(tChart)tChart.destroy();
  tChart=new Chart(ctx,{type:'line',data:{labels:wks.map(tWkLab),datasets:ds},
   plugins:[tLabelPlugin],
-  options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},
+  options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'nearest',axis:'x',intersect:true},
    layout:{padding:{right:130,top:22,bottom:6,left:6}},
    plugins:{legend:{display:true,position:'bottom',labels:{boxWidth:14,usePointStyle:true,pointStyle:'line',font:{size:11.5},padding:14}},
     tooltip:{callbacks:{label:function(c){
@@ -831,7 +823,7 @@ var EXP = {"from":"2026-03-01","to":"2026-07-31","cats":["Payroll Expenses","Fue
 /* validated categorical theme (CVD-checked): blue, orange, aqua, yellow, magenta, green */
 var X_PAL = ['#2a78d6','#eb6834','#1baf7a','#eda100','#e87ba4','#008300'];
 var X_MAX = 6;
-var xState = {grain:'month', cats:[], from:null, to:null};
+var xState = {grain:'month', cats:[], from:null, to:null};   /* monthly only */
 var xChart = null;
 
 function xMoney(v){return '$'+(Math.round(v)).toLocaleString();}
@@ -850,8 +842,7 @@ function xPeriods(){
   if(xState.to!==null){var k2=ps.indexOf(xState.to); if(k2>=0)i1=k2;}
   if(i1<i0){var t=i0;i0=i1;i1=t;}
   var out=[];
-  var hide=document.getElementById('xExcl'); hide=hide?hide.checked:false;
-  for(var i=i0;i<=i1;i++){ if(hide&&G.partial[i])continue; out.push({p:ps[i],i:i,partial:G.partial[i]}); }
+  for(var i=i0;i<=i1;i++){ out.push({p:ps[i],i:i,partial:G.partial[i]}); }
   return out;
 }
 function xVal(cat,idx){var a=xG().d[cat];return a?a[idx]:0;}
@@ -909,12 +900,7 @@ document.addEventListener('click',function(e){
   if(m&&m.style.display!=='none'&&!m.contains(e.target)&&e.target.id!=='xCatBtn')m.style.display='none';
 });
 
-function xSetGrain(g){
-  if(xState.grain===g)return;
-  xState.grain=g; xState.from=null; xState.to=null;
-  document.querySelectorAll('#xGrain button').forEach(function(b){b.classList.toggle('active',b.dataset.g===g);});
-  xBuildRange(); xRender();
-}
+function xSetGrain(g){/* monthly only - grain switch removed from the UI */}
 
 function xRender(){
   var P=xPeriods(); if(!P.length)return;
@@ -928,26 +914,27 @@ function xRender(){
   var k=document.getElementById('xKpis');
   k.innerHTML =
    '<div class="kpi"><div class="l">Total expense</div><div class="v">'+xMoney(grand)+'</div></div>'+
-   '<div class="kpi"><div class="l">Per '+(xState.grain==='month'?'month':'week')+' (avg)</div><div class="v">'+xMoney(per)+'</div></div>'+
+   '<div class="kpi"><div class="l">Per month (avg)</div><div class="v">'+xMoney(per)+'</div></div>'+
    '<div class="kpi"><div class="l">Largest category</div><div class="v" style="font-size:17px">'+top+'</div><div class="l" style="margin-top:2px;text-transform:none">'+xMoney(byCat[top])+' &middot; '+(byCat[top]/grand*100).toFixed(1)+'%</div></div>'+
    '<div class="kpi"><div class="l">Periods shown</div><div class="v">'+P.length+'</div></div>';
 
   /* ---- chart: one y-axis, every series in dollars ---- */
   var ds = xState.cats.map(function(c,i){
     return {label:c, data:P.map(function(o){return xVal(c,o.i);}),
-            borderColor:X_PAL[i], backgroundColor:X_PAL[i]+'22',
-            borderWidth:2, tension:.25, spanGaps:true, pointRadius:3, pointHoverRadius:6, pointBackgroundColor:X_PAL[i]};
+            backgroundColor:X_PAL[i], borderColor:X_PAL[i], borderWidth:0,
+            borderRadius:4, borderSkipped:'bottom',
+            categoryPercentage:0.78, barPercentage:0.88};
   });
   document.getElementById('xChartTitle').textContent =
-    (xState.cats.length===1 ? xState.cats[0] : 'Expense trend') + ' \u2014 ' + (xState.grain==='month'?'monthly':'weekly');
+    (xState.cats.length===1 ? xState.cats[0]+' by month' : 'Expense by month');
   document.getElementById('xChartNote').textContent =
-    xState.cats.length ? 'All series are dollars on a single axis, so heights are directly comparable.'
+    xState.cats.length ? 'All series are dollars on a single axis, so bar heights are directly comparable across categories and months.'
                        : 'Pick one or more categories above to plot.';
   if(xChart)xChart.destroy();
   xChart = new Chart(document.getElementById('xchart').getContext('2d'),{
-    type:'line',
+    type:'bar',
     data:{labels:labels, datasets:ds},
-    options:{responsive:true, maintainAspectRatio:false, interaction:{mode:'index',intersect:false},
+    options:{responsive:true, maintainAspectRatio:false, interaction:{mode:'nearest',axis:'x',intersect:true},
       plugins:{
         legend:{display:ds.length>1, position:'bottom', labels:{boxWidth:10,boxHeight:10,usePointStyle:true,pointStyle:'rectRounded',font:{size:11.5}}},
         tooltip:{callbacks:{label:function(c){return c.dataset.label+': '+xMoney2(c.parsed.y);}}}
@@ -975,8 +962,7 @@ function xRender(){
   P.forEach(function(o){var t=0;EXP.cats.forEach(function(c){t+=xVal(c,o.i);});h+='<td style="font-weight:700">'+xMoney2(t)+'</td>';});
   h+='<td style="font-weight:700">'+xMoney2(grand)+'</td><td style="font-weight:700">100.0%</td></tr></tfoot></table>';
   document.getElementById('xtable').innerHTML=h;
-  document.getElementById('xTableTitle').textContent='Expenses by category \u2014 '+(xState.grain==='month'?'monthly':'weekly')+
-    (P.some(function(o){return o.partial;})?'  (* partial period)':'');
+  document.getElementById('xTableTitle').textContent='Expenses by category \u2014 monthly';
 }
 </script>
 
