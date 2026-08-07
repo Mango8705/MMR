@@ -81,7 +81,7 @@ table.sa td.cell.drag{opacity:.5}
 </style></head><body>
 <header style="display:flex;align-items:center;justify-content:space-between;gap:12px"><div><h1>My Medi Rides — Operations Dashboard</h1><p>Driver revenue vs. costs (Mar 16 &ndash; Jul 29, 2026) &middot; Expenses (Mar 1 &ndash; Jul 31, 2026) &middot; BD targeting</p></div><button onclick="doRefresh(this)" title="Reload the latest published data for this tab" style="background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.45);border-radius:6px;padding:7px 13px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap">&#x21bb; Refresh</button></header>
 <div class="tabs"><div class="tab active" data-tab="fin" onclick="showTab('fin')">Financials</div><div class="tab" data-tab="ue" onclick="showTab('ue')">Unit Economics</div><div class="tab" data-tab="brk" onclick="showTab('brk')">By Broker</div><div class="tab" data-tab="exp" onclick="showTab('exp')">Expenses</div><div class="tab" data-tab="prod" onclick="showTab('prod')">Productivity</div><div class="tab" data-tab="bd" onclick="showTab('bd')">BD Map</div><div class="tab" data-tab="trend" onclick="showTab('trend')">Trends</div><div class="tab" data-tab="pl" onclick="showTab('pl')">P&amp;L</div></div>
-<div style="background:#eef2f7;border-bottom:1px solid var(--line);padding:9px 18px;display:flex;gap:20px;align-items:center;flex-wrap:wrap;font-size:12.5px"><strong style="font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--mut)">Model basis</strong><label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" id="gsModiv" checked onchange="gsSet('modiv',this.checked)"> ModivCare proposed rates</label><label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" id="gsOvh" checked onchange="gsSet('overhead',this.checked)"> Include indirect / overhead cost</label><span id="gsBadge" style="color:var(--mut)">ModivCare proposed rates &middot; fully loaded (overhead in)</span><span style="color:var(--mut)">&middot; excludes Miscellaneous ($20,284, 4 atypical txns)</span></div>
+<div style="background:#eef2f7;border-bottom:1px solid var(--line);padding:9px 18px;display:flex;gap:20px;align-items:center;flex-wrap:wrap;font-size:12.5px"><strong style="font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--mut)">Model basis</strong><label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" id="gsModiv" checked onchange="gsSet('modiv',this.checked)"> ModivCare proposed rates</label><label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" id="gsOvh" checked onchange="gsSet('overhead',this.checked)"> Include indirect / overhead cost</label><span id="gsBadge" style="color:var(--mut)">ModivCare proposed rates &middot; fully loaded (overhead in)</span><span style="color:var(--mut)">&middot; excludes Miscellaneous ($20,284, 4 atypical txns)</span><span style="color:var(--mut)">&middot; indirect cost is allocated on its own driver &mdash; van-days, driver-days or stretcher trips. Period costs (non-driver payroll, advertising, bank/dues, recruitment, one-offs) are <strong>not</strong> pushed onto driver or broker rows.</span></div>
 
 <div class="wrap" id="fin">
  <div class="controls"><div class="seg" id="grain">
@@ -597,27 +597,30 @@ var GS={modiv:true,overhead:true};
 function gsMoAvg(cat){var a=EXP.month.d[cat];if(!a)return 0;var s=0;a.forEach(function(x){s+=Math.abs(x||0);});return s/a.length;}
 function gsMo(cat,ym){var i=EXP.month.p.indexOf(ym);if(i<0||!EXP.month.d[cat])return 0;return Math.abs(EXP.month.d[cat][i]||0);}
 
-function gsOvhPool(ym,moPay,moTripsAll){
-  /* monthly indirect pool for month ym, excluding insurance */
-  var i=EXP.month.p.indexOf(ym); if(i<0) return 0;
-  var lo=Math.max(0,i-2),n=i-lo+1,tr=0;
+function gsOvhPool(ym,moPay){
+  /* Indirect cost, split by WHAT ACTUALLY DRIVES IT - not by share of trips.
+       vanDay  - accrues per van in service   -> allocated on real van-days
+       drvDay  - priced per employee          -> allocated on driver-days
+       cogs    - subcontracted stretcher work -> matched to stretcher trips
+       period  - exists whether or not a van moves; held at COMPANY level and
+                 never pushed onto a driver or broker row.                    */
+  var i=EXP.month.p.indexOf(ym); if(i<0) return {vanDay:0,drvDay:0,cogs:0,period:0};
+  var lo=Math.max(0,i-2),n=i-lo+1;
+  var tr=0;
   for(var k=lo;k<=i;k++){['Auto Repair','Maintenance','Merchandise & Supplies'].forEach(function(c){
     var a=EXP.month.d[c]; if(a) tr+=Math.abs(a[k]||0);});}
-  tr=tr/n;                                   /* 3-mo trailing repair bucket */
+  tr=tr/n;                                        /* 3-mo trailing fleet wear */
   var ndp=0,cnt=0;
   for(var k2=lo;k2<=i;k2++){var y2=EXP.month.p[k2];
     if(moPay[y2]===undefined)continue;
     ndp+=Math.max(0,gsMo('Payroll Expenses',y2)-moPay[y2]);cnt++;}
-  ndp=cnt?ndp/cnt:0;                         /* 3-mo trailing non-driver payroll */
-  var cal=0;['Advertising/Promotional','Bank Service Fee',
-             'Dues & Subscriptions','Processing Charge - Clover'].forEach(function(c){cal+=gsMoAvg(c);});
-  /* per-VEHICLE software/registration - allocated on real van-days, not here */
-  var rgdmv=0;
-  var wc=gsMoAvg("Worker's Comp");
-  var small=0;['Stretcher','Tolls','Uber','Credit Card Processing Fees','Employee Recruitment Expense',
-    'Business Service','Business Service - Apla Solutions','Meals','Medical Equipment',
-    'Other Services - Government','Unknown'].forEach(function(c){small+=gsMo(c,ym);});
-  return ndp+cal+rgdmv+wc+tr+small;
+  ndp=cnt?ndp/cnt:0;
+  var period=ndp;
+  ['Advertising/Promotional','Bank Service Fee','Dues & Subscriptions','Processing Charge - Clover',
+   'Credit Card Processing Fees','Employee Recruitment Expense','Business Service',
+   'Business Service - Apla Solutions','Meals','Medical Equipment','Other Services - Government',
+   'Unknown','Uber','Tolls'].forEach(function(c){period+=gsMo(c,ym);});
+  return {vanDay:tr, drvDay:gsMoAvg("Worker's Comp"), cogs:gsMo('Stretcher',ym), period:period};
 }
 
 function gsApply(){
@@ -670,10 +673,31 @@ function gsApply(){
   var wkIns={};
   RECDAY.forEach(function(r){var k=r.driver+'|'+r.week;wkIns[k]=(wkIns[k]||0)+r.ins;});
   REC.forEach(function(r){r.ins=wkIns[r.driver+'|'+r.week]||0;});
-  var pool={};Object.keys(moTrips).forEach(function(m){pool[m]=gsOvhPool(m,moPay,moTrips);});
+  var pool={};Object.keys(moTrips).forEach(function(m){pool[m]=gsOvhPool(m,moPay);});
+  /* van-day and driver-day denominators per month */
+  var moVanDays={},moDrvDays={},moStr={};
+  Object.keys(moDays).forEach(function(m){
+    var vd=0,dd=0;Object.keys(moDays[m]).forEach(function(dt){vd+=vansOn(dt);});
+    moVanDays[m]=vd;});
   RECDAY.forEach(function(r){var m=r.date.slice(0,7);
-    r.ovh=GS.overhead?((moTrips[m]?pool[m]*(r.trips/moTrips[m]):0)+(r._veh||0)):0;});
-  /* REC (weekly) = sum of its RECDAY rows */
+    if(r.trips>0||r.pay>0)moDrvDays[m]=(moDrvDays[m]||0)+1;});
+  BLDAY.forEach(function(r){if(r.los==='Stretcher')moStr[r.date.slice(0,7)]=(moStr[r.date.slice(0,7)]||0)+r.trips;});
+  var strTrips={};
+  BLDAY.forEach(function(r){if(r.los==='Stretcher')strTrips[r.driver+'|'+r.date]=(strTrips[r.driver+'|'+r.date]||0)+r.trips;});
+  var COMPANY={};                       /* period cost, held OFF the rows */
+  Object.keys(pool).forEach(function(m){COMPANY[m]=pool[m].period;});
+  window._gsCompanyOvh=COMPANY;
+  RECDAY.forEach(function(r){
+    if(!GS.overhead){r.ovh=0;return;}
+    var m=r.date.slice(0,7),p=pool[m];if(!p){r.ovh=0;return;}
+    /* van-day share: this driver's slice of the day's van-days, by trips */
+    var dayV=vansOn(r.date), t=dayTrips[r.date]||0, sh=t>0?r.trips/t:0;
+    var vanShare=(moVanDays[m]?p.vanDay*(dayV/moVanDays[m]):0)*sh;
+    var drvShare=(moDrvDays[m]&&(r.trips>0||r.pay>0))?p.drvDay/moDrvDays[m]:0;
+    var cogsShare=(moStr[m]?p.cogs*((strTrips[r.driver+'|'+r.date]||0)/moStr[m]):0);
+    r.ovh=vanShare+drvShare+cogsShare+(r._veh||0);
+  });
+  /* roll the daily allocation up to the weekly REC rows */
   var wkOvh={};
   RECDAY.forEach(function(r){var k=r.driver+'|'+r.week;wkOvh[k]=(wkOvh[k]||0)+(r.ovh||0);});
   REC.forEach(function(r){r.ovh=wkOvh[r.driver+'|'+r.week]||0;});
@@ -693,7 +717,7 @@ function gsSet(k,v){
   if(a==='prod')pRender();
   var b=document.getElementById('gsBadge');
   if(b)b.textContent=(GS.modiv?'ModivCare proposed rates':'ModivCare current rates')+
-    ' · '+(GS.overhead?'fully loaded (overhead in)':'direct cost only');
+    ' · '+(GS.overhead?'van + driver overhead on rows \u00b7 period cost held at company level':'direct cost only');
 }
 
 setGrain('total');
@@ -1350,7 +1374,7 @@ function plInit(){plSetGrain('week');}
   gsApply();
   var b=document.getElementById('gsBadge');
   if(b)b.textContent=(GS.modiv?'ModivCare proposed rates':'ModivCare current rates')+
-    ' \u00b7 '+(GS.overhead?'fully loaded (overhead in)':'direct cost only');
+    ' \u00b7 '+(GS.overhead?'van + driver overhead on rows \u00b7 period cost held at company level':'direct cost only');
   if(typeof setGrain==='function')setGrain(typeof grain!=='undefined'?grain:'total');
 }catch(e){if(window.console)console.error('gsApply failed',e);}})();
 </script>
