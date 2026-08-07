@@ -80,7 +80,7 @@ table.sa td.cell.drag{opacity:.5}
 @media(max-width:720px){.kpis{grid-template-columns:repeat(2,1fr)}}
 </style></head><body>
 <header style="display:flex;align-items:center;justify-content:space-between;gap:12px"><div><h1>My Medi Rides — Operations Dashboard</h1><p>Driver revenue vs. direct costs (Mar 16 &ndash; Jul 29, 2026) &middot; Expenses (Mar 1 &ndash; Jul 31, 2026) &middot; BD targeting</p></div><button onclick="doRefresh(this)" title="Reload the latest published data for this tab" style="background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.45);border-radius:6px;padding:7px 13px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap">&#x21bb; Refresh</button></header>
-<div class="tabs"><div class="tab active" data-tab="fin" onclick="showTab('fin')">Financials</div><div class="tab" data-tab="ue" onclick="showTab('ue')">Unit Economics</div><div class="tab" data-tab="brk" onclick="showTab('brk')">By Broker</div><div class="tab" data-tab="exp" onclick="showTab('exp')">Expenses</div><div class="tab" data-tab="prod" onclick="showTab('prod')">Productivity</div><div class="tab" data-tab="bd" onclick="showTab('bd')">BD Map</div><div class="tab" data-tab="trend" onclick="showTab('trend')">Trends</div></div>
+<div class="tabs"><div class="tab active" data-tab="fin" onclick="showTab('fin')">Financials</div><div class="tab" data-tab="ue" onclick="showTab('ue')">Unit Economics</div><div class="tab" data-tab="brk" onclick="showTab('brk')">By Broker</div><div class="tab" data-tab="exp" onclick="showTab('exp')">Expenses</div><div class="tab" data-tab="prod" onclick="showTab('prod')">Productivity</div><div class="tab" data-tab="bd" onclick="showTab('bd')">BD Map</div><div class="tab" data-tab="trend" onclick="showTab('trend')">Trends</div><div class="tab" data-tab="pl" onclick="showTab('pl')">P&amp;L</div></div>
 
 <div class="wrap" id="fin">
  <div class="controls"><div class="seg" id="grain">
@@ -160,6 +160,56 @@ table.sa td.cell.drag{opacity:.5}
   <p class="note" id="xChartNote"></p></div>
  <div class="card"><h3 id="xTableTitle">Expenses by category</h3><div id="xtable"></div>
   <p class="note">Cash basis &mdash; dated when money left the bank, not when the cost was incurred. Fuel is billed by Wright Express roughly monthly in arrears, so a month can carry more or less than one month of pumping. Source: categorised Fifth&nbsp;Third (x4042, x6744, x6751) and American&nbsp;Express (x71010, x71028) transactions, 01 Mar &ndash; 31 Jul 2026. Transfers between own accounts, credit-card payments and bounced/re-presented debits are excluded.</p></div>
+</div>
+
+<div class="wrap" id="pl" style="display:none">
+ <div class="controls" style="flex-wrap:wrap;gap:16px;align-items:flex-end">
+  <div style="display:flex;flex-direction:column;gap:5px">
+   <label style="font-size:10.5px;text-transform:uppercase;letter-spacing:.04em;color:var(--mut);font-weight:600">Period</label>
+   <div class="seg" id="plgrain">
+    <button data-g="week" class="active" onclick="plSetGrain('week')">Weekly</button>
+    <button data-g="month" onclick="plSetGrain('month')">Monthly</button></div>
+  </div>
+  <div style="display:flex;flex-direction:column;gap:5px">
+   <label style="font-size:10.5px;text-transform:uppercase;letter-spacing:.04em;color:var(--mut);font-weight:600">Rates</label>
+   <label style="display:flex;align-items:center;gap:7px;font-size:13px;padding:7px 12px;border:1px solid var(--line);border-radius:8px;background:#fff;cursor:pointer">
+    <input type="checkbox" id="plModiv" checked onchange="plToggleModiv(this)"> ModivCare proposed rates</label>
+  </div>
+ </div>
+
+ <div class="kpis" id="plcards"></div>
+
+ <div class="card">
+  <h3 style="margin:0 0 4px">Fully-loaded P&amp;L &mdash; every expense category allocated</h3>
+  <p style="font-size:12px;color:var(--mut);margin:0 0 12px;line-height:1.5">
+   Unlike the Financials and By&nbsp;Broker tabs (which show <em>contribution</em> above direct trip cost), this is
+   <strong>net margin</strong>: driver payroll, fuel, insurance, non-driver payroll, repairs, software, advertising and
+   every other register category are allocated onto the period that consumed them.
+  </p>
+  <div id="pltable" style="overflow-x:auto"></div>
+  <p class="note">
+   <strong>Allocation rules.</strong>
+   <strong>Event-dated</strong> &mdash; driver payroll and fuel are actuals stamped to the day they occurred;
+   <strong>WEX is the system of record for fuel</strong> (the register's Fuel&nbsp;Expense line is payment-dated and is not used).
+   <strong>Per-van</strong> &mdash; insurance, RouteGenie and DMV are charged a full week for every van that operated that week,
+   with no proration for a slow day; vans that did not run appear in the <em>Idle&nbsp;fleet</em> column and are excluded from margin.
+   <strong>Calendar-flat</strong> &mdash; software, advertising, bank fees and dues at monthly&nbsp;&times;&nbsp;12/52.
+   <strong>Trailing</strong> &mdash; auto repair, maintenance and supplies use a 3-month trailing average spread by trips,
+   so one large invoice does not distort the week it lands in.
+   <strong>Worker's Comp</strong> is accrued from quarterly billing.
+   <br><br>
+   <strong>Excluded:</strong> Miscellaneous Expenses ($20,284 across 4 atypical transactions, mostly a one-time fleet
+   re-tire) is carried out of the model rather than silently dropped. Routine tire wear remains inside Auto&nbsp;Repair.
+   <br><br>
+   <strong>Calibration pending.</strong> The source data has no vehicle field, so &ldquo;Vans&rdquo; is proxied by
+   <em>peak concurrent drivers in a day</em> (fleet&nbsp;=&nbsp;<span id="plFleet">&ndash;</span>) and &ldquo;Drv&rdquo; is
+   weekly driver headcount. Per-van dollars are ratio-based and hold as long as drivers-per-van is stable
+   (measured CV&nbsp;0.09), but they are not calibrated to a real roster. Non-driver payroll is derived monthly as
+   register payroll minus driver pay, which inflates it in months where trip data is incomplete.
+   <span style="color:var(--mut)">*</span>&nbsp;marks weeks with fewer than 5 operating days &mdash; event-dated costs are
+   short while allocated costs are full, so those margins read high.
+  </p>
+ </div>
 </div>
 
 <div class="wrap" id="bd" style="display:none">
@@ -516,7 +566,7 @@ function sOptimize(){sPush();
 function sReset(){sModel=sBuild(sDay);sHold=[];sOrigNet=sDayNet();sClearHist();sRender();}
 function sSetDay(day){sDay=day;document.querySelectorAll('#sgrain button').forEach(b=>b.classList.toggle('active',b.dataset.d===day));sModel=sBuild(day);sHold=[];sOrigNet=sDayNet();sClearHist();sRender();}
 function sInit(){const seg=document.getElementById('sgrain');seg.innerHTML=SHIFT.days.map((d,i)=>'<button data-d="'+d+'" class="'+(i===0?'active':'')+'" onclick="sSetDay(\''+d+'\')">'+d+'</button>').join('');sModel=sBuild(sDay);sHold=[];sOrigNet=sDayNet();sClearHist();sRender();}
-function showTab(t){['fin','ue','brk','exp','prod','bd','trend'].forEach(v=>document.getElementById(v).style.display=v===t?'':'none');document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('active',x.dataset.tab===t));if(t==='brk'&&!window._bi){window._bi=1;bSetGrain('total');}if(t==='ue'&&!window._ui){window._ui=1;ueSetGrain('total');}if(t==='prod'&&!window._pi){window._pi=1;pRender();}if(t==='trend'&&!window._ti){window._ti=1;tInit();}if(t==='exp'&&!window._xi){window._xi=1;xInit();}}
+function showTab(t){['fin','ue','brk','exp','prod','bd','trend','pl'].forEach(v=>document.getElementById(v).style.display=v===t?'':'none');document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('active',x.dataset.tab===t));if(t==='brk'&&!window._bi){window._bi=1;bSetGrain('total');}if(t==='ue'&&!window._ui){window._ui=1;ueSetGrain('total');}if(t==='prod'&&!window._pi){window._pi=1;pRender();}if(t==='trend'&&!window._ti){window._ti=1;tInit();}if(t==='exp'&&!window._xi){window._xi=1;xInit();}if(t==='pl'&&!window._pli){window._pli=1;plInit();}}
 function doRefresh(btn){var a=document.querySelector('.tab.active');a=a?a.dataset.tab:'fin';if(btn){btn.textContent='\u21bb Refreshing\u2026';}if(a==='bd'){var f=document.querySelector('.mapframe');var b=f.src.split('?')[0];f.src=b+'?t='+Date.now();setTimeout(function(){if(btn)btn.textContent='\u21bb Refresh';},900);}else{location.href=location.pathname+'?t='+Date.now()+'#'+a;}}
 setGrain('total');
 (function(){var h=(location.hash||'').replace('#','');if(['fin','ue','brk','exp','prod','bd','trend'].indexOf(h)>=0)showTab(h);})();
@@ -966,4 +1016,195 @@ function xRender(){
 }
 </script>
 
+<script>
+/* ================= FULLY-LOADED P&L =================
+   Builds a real net-margin view by allocating EVERY expense category
+   (from the EXP register) onto operating weeks/months.
+
+   Allocation rules  (see COSTMODEL below):
+     A EVENT      driver payroll + fuel = actuals, already date-stamped in RECDAY.
+                  WEX is the system of record for fuel; the register's
+                  "Fuel Expense" is payment-dated and is NOT used here.
+     B PER-VAN    insurance / RouteGenie / DMV -> charged for each van that
+                  OPERATED that week, at a full week's rate. No day proration.
+                  Vans that did not run land in the separate IDLE FLEET line.
+     C PER-EMP    Worker's Comp, accrued quarterly -> weekly.
+     D CAL FLAT   software / advertising / bank / dues -> monthly x 12/52.
+     E TRAILING   repair + maintenance + supplies -> 3-month trailing average,
+                  spread by trips (trips proxy for miles).
+   EXCLUDED       Miscellaneous Expenses (4 atypical txns, incl. a one-time
+                  fleet re-tire) - carried visibly, never silently dropped.
+
+   Van count is proxied by PEAK CONCURRENT DRIVERS IN A DAY (no vehicle field
+   exists in the source data). Swap in a real fleet roster to calibrate. */
+
+var COSTMODEL={
+  uplift:{Ambulatory:2.43,Wheelchair:4.22},
+  exclude:['Miscellaneous Expenses'],
+  perVan:['Insurance','Software - RouteGenie','DMV'],
+  calFlat:['Software - Fleet (Autosist)','Advertising/Promotional','Bank Service Fee','Dues & Subscriptions','Processing Charge - Clover'],
+  trail:['Auto Repair','Maintenance','Merchandise & Supplies'],
+  wc:"Worker's Comp",
+  small:['Stretcher','Tolls','Uber','Credit Card Processing Fees','Employee Recruitment Expense','Business Service','Business Service - Apla Solutions','Meals','Medical Equipment','Other Services - Government','Unknown'],
+  varTrip:6.28
+};
+var plState={grain:'week',modiv:true};
+
+function plMo(cat,ym){var i=EXP.month.p.indexOf(ym);if(i<0||!EXP.month.d[cat])return 0;return Math.abs(EXP.month.d[cat][i]||0);}
+function plMoAvg(cat){var a=EXP.month.d[cat];if(!a)return 0;var s=0;a.forEach(function(x){s+=Math.abs(x||0);});return s/a.length;}
+function plMoSum(cats,ym){var s=0;cats.forEach(function(c){s+=plMo(c,ym);});return s;}
+function plNdp(ym,ix){ /* register payroll minus driver pay, 3-mo trailing to absorb
+                          4-vs-5 pay-run months and partial trip data */
+  var i=EXP.month.p.indexOf(ym);if(i<0)return 0;var lo=Math.max(0,i-2),s=0,n=0;
+  for(var k=lo;k<=i;k++){var ym2=EXP.month.p[k];
+    var reg=plMo('Payroll Expenses',ym2),drv=ix.moPay[ym2];
+    if(drv===undefined)continue;
+    s+=Math.max(0,reg-drv);n++;}
+  return n?s/n:0;
+}
+function plTrail(ym){ /* 3-month trailing average of the trailing bucket */
+  var i=EXP.month.p.indexOf(ym);if(i<0)return 0;var lo=Math.max(0,i-2),n=i-lo+1,s=0;
+  for(var k=lo;k<=i;k++){COSTMODEL.trail.forEach(function(c){var a=EXP.month.d[c];if(a)s+=Math.abs(a[k]||0);});}
+  return s/n;
+}
+
+function plIndex(){
+  if(window._plIx)return window._plIx;
+  var day={},wkD={},moD={};
+  RECDAY.forEach(function(r){
+    var d=day[r.date]||(day[r.date]={w:r.week,m:r.date.slice(0,7),rev:0,pay:0,fuel:0,trips:0,drv:{}});
+    d.rev+=r.rev;d.pay+=r.pay;d.fuel+=r.fuel;d.trips+=r.trips;
+    if(r.trips>0||r.pay>0)d.drv[r.driver]=1;
+  });
+  Object.keys(day).forEach(function(dt){
+    var d=day[dt],n=Object.keys(d.drv).length;
+    var w=wkD[d.w]||(wkD[d.w]={key:d.w,m:d.m,rev:0,pay:0,fuel:0,trips:0,up:0,days:0,peak:0,drv:{}});
+    w.rev+=d.rev;w.pay+=d.pay;w.fuel+=d.fuel;w.trips+=d.trips;
+    if(n>0){w.days++;if(n>w.peak)w.peak=n;Object.keys(d.drv).forEach(function(k){w.drv[k]=1;});}
+    var m=moD[d.m]||(moD[d.m]={key:d.m,m:d.m,rev:0,pay:0,fuel:0,trips:0,up:0,days:0,peak:0,drv:{},vanwk:0});
+    m.rev+=d.rev;m.pay+=d.pay;m.fuel+=d.fuel;m.trips+=d.trips;
+    if(n>0){m.days++;if(n>m.peak)m.peak=n;Object.keys(d.drv).forEach(function(k){m.drv[k]=1;});}
+  });
+  BLDAY.forEach(function(r){
+    if(r.broker!=='ModivCare')return;
+    var u=(COSTMODEL.uplift[r.los]||0)*r.trips;
+    if(wkD[r.week])wkD[r.week].up+=u;
+    var mk=r.date.slice(0,7);if(moD[mk])moD[mk].up+=u;
+  });
+  /* month van-weeks = sum of each week's peak, for weeks whose start month matches */
+  Object.keys(wkD).forEach(function(k){var mk=k.slice(0,7);if(moD[mk])moD[mk].vanwk+=wkD[k].peak;});
+  var fleet=0;Object.keys(wkD).forEach(function(k){if(wkD[k].peak>fleet)fleet=wkD[k].peak;});
+  /* month trips + driver pay, for non-driver payroll derivation */
+  var moTrips={},moPay={};
+  Object.keys(moD).forEach(function(k){moTrips[k]=moD[k].trips;moPay[k]=moD[k].pay;});
+  var mdays=Object.keys(moD).map(function(k){return moD[k].days;}).sort(function(a,b){return a-b;});
+  var med=mdays.length?mdays[Math.floor(mdays.length/2)]:26;
+  window._plIx={wk:wkD,mo:moD,fleet:fleet||1,moTrips:moTrips,moPay:moPay,medMoDays:med};
+  return window._plIx;
+}
+
+function plRows(grain){
+  var ix=plIndex(),src=grain==='month'?ix.mo:ix.wk,keys=Object.keys(src).sort();
+  var perVanMo=0;COSTMODEL.perVan.forEach(function(c){perVanMo+=plMoAvg(c);});
+  var perVanWk=perVanMo/ix.fleet*12/52;
+  var calWk=0;COSTMODEL.calFlat.forEach(function(c){calWk+=plMoAvg(c);});calWk=calWk*12/52;
+  var wcWk=plMoAvg(COSTMODEL.wc)*12/52;
+  var out=[];
+  keys.forEach(function(k){
+    var o=src[k];if(o.trips<=0&&o.rev<=0)return;
+    var ym=o.m,mt=ix.moTrips[ym]||1,share=o.trips/mt;
+    var ndpMo=plNdp(ym,ix);
+    var wksInMo=4.333;
+    var vanUnits=grain==='month'?o.vanwk:o.peak;
+    var r={
+      key:k,grain:grain,days:o.days,drivers:Object.keys(o.drv).length,vans:o.peak,trips:o.trips,
+      revActual:o.rev, uplift:o.up,
+      rev:o.rev+(plState.modiv?o.up:0),
+      pay:o.pay, fuel:o.fuel,
+      ndp: grain==='month'?ndpMo:ndpMo/wksInMo,
+      perVan: vanUnits*perVanWk,
+      idle: grain==='month'? Math.max(0,ix.fleet*wksInMo-o.vanwk)*perVanWk
+                           : Math.max(0,ix.fleet-o.peak)*perVanWk,
+      cal: grain==='month'?calWk*wksInMo:calWk,
+      wc:  grain==='month'?wcWk*wksInMo:wcWk,
+      trail: plTrail(ym)*share,
+      small: plMoSum(COSTMODEL.small,ym)*share,
+      partial: grain==='week' ? o.days<5 : o.days<ix.medMoDays*0.8
+    };
+    r.direct=r.pay+r.fuel+r.perVan;
+    r.overhead=r.ndp+r.cal+r.wc+r.trail+r.small;
+    r.exp=r.direct+r.overhead;
+    r.net=r.rev-r.exp;
+    r.mgn=r.rev>0?r.net/r.rev*100:0;
+    r.tripContrib=r.rev-COSTMODEL.varTrip*r.trips;
+    out.push(r);
+  });
+  return out;
+}
+
+function plM(v){return (v<0?'-$':'$')+Math.abs(Math.round(v)).toLocaleString();}
+function plPct(v){return v.toFixed(1)+'%';}
+
+function plRender(){
+  var g=plState.grain,rows=plRows(g);
+  var lim=g==='week'?26:12;
+  if(rows.length>lim)rows=rows.slice(rows.length-lim);
+  var T={rev:0,uplift:0,pay:0,fuel:0,ndp:0,perVan:0,idle:0,cal:0,wc:0,trail:0,small:0,exp:0,net:0,trips:0};
+  var full=rows.filter(function(r){return !r.partial;});
+  full.forEach(function(r){for(var k in T)if(r[k]!==undefined)T[k]+=r[k];});
+  var h='<table class="dt"><thead><tr>'+
+    '<th>'+(g==='week'?'Week':'Month')+'</th><th>Drv</th><th>Vans</th><th>Trips</th>'+
+    '<th>Revenue</th><th>MODV&nbsp;uplift</th>'+
+    '<th>Driver&nbsp;pay</th><th>Fuel&nbsp;(WEX)</th><th>Per-van</th>'+
+    '<th>Non-drv&nbsp;pay</th><th>Trailing</th><th>Small</th><th>Cal+WC</th>'+
+    '<th>Total&nbsp;exp</th><th>NET</th><th>Margin</th><th>Idle&nbsp;fleet</th></tr></thead><tbody>';
+  rows.forEach(function(r){
+    var c=r.net>=0?'#16a34a':'#dc2626';
+    h+='<tr>'+
+      '<td'+(r.partial?' style="color:var(--mut)"':'')+'>'+r.key+(r.partial?' <span style="color:var(--mut)">*</span>':'')+'</td>'+
+      '<td>'+r.drivers+'</td><td>'+r.vans+'</td><td>'+Math.round(r.trips)+'</td>'+
+      '<td>'+plM(r.rev)+'</td><td style="color:var(--mut)">'+plM(r.uplift)+'</td>'+
+      '<td>'+plM(r.pay)+'</td><td>'+plM(r.fuel)+'</td><td>'+plM(r.perVan)+'</td>'+
+      '<td>'+plM(r.ndp)+'</td><td>'+plM(r.trail)+'</td><td>'+plM(r.small)+'</td><td>'+plM(r.cal+r.wc)+'</td>'+
+      '<td style="font-weight:600">'+plM(r.exp)+'</td>'+
+      '<td style="font-weight:700;color:'+c+'">'+plM(r.net)+'</td>'+
+      '<td style="font-weight:700;color:'+c+'">'+plPct(r.mgn)+'</td>'+
+      '<td style="color:var(--mut)">'+plM(r.idle)+'</td></tr>';
+  });
+  var tc=T.net>=0?'#16a34a':'#dc2626';
+  h+='</tbody><tfoot><tr style="border-top:2px solid var(--line);font-weight:700">'+
+    '<td>TOTAL<span style="font-weight:400;color:var(--mut)"> (full periods)</span></td><td></td><td></td><td>'+Math.round(T.trips)+'</td>'+
+    '<td>'+plM(T.rev)+'</td><td>'+plM(T.uplift)+'</td>'+
+    '<td>'+plM(T.pay)+'</td><td>'+plM(T.fuel)+'</td><td>'+plM(T.perVan)+'</td>'+
+    '<td>'+plM(T.ndp)+'</td><td>'+plM(T.trail)+'</td><td>'+plM(T.small)+'</td><td>'+plM(T.cal+T.wc)+'</td>'+
+    '<td>'+plM(T.exp)+'</td><td style="color:'+tc+'">'+plM(T.net)+'</td>'+
+    '<td style="color:'+tc+'">'+plPct(T.rev>0?T.net/T.rev*100:0)+'</td>'+
+    '<td>'+plM(T.idle)+'</td></tr></tfoot></table>';
+  document.getElementById('pltable').innerHTML=h;
+
+  /* summary cards */
+  var ix=plIndex();
+  var pos=full.filter(function(r){return r.net>0;}).length;
+  var cards=[
+    ['Net margin',plPct(T.rev>0?T.net/T.rev*100:0),T.net>=0?'#16a34a':'#dc2626'],
+    ['Net '+(g==='week'?'per week':'per month'),plM(T.net/Math.max(1,full.length)),T.net>=0?'#16a34a':'#dc2626'],
+    ['Profitable periods',pos+' of '+full.length,'var(--ink)'],
+    ['ModivCare uplift',plM(T.uplift),'var(--ink)'],
+    ['Overhead / trip',plM(T.trips>0?(T.ndp+T.cal+T.wc+T.trail+T.small)/T.trips:0),'var(--ink)'],
+    ['Idle-fleet cost',plM(T.idle),'var(--mut)']
+  ];
+  var ch='';
+  cards.forEach(function(c){
+    ch+='<div class="kpi"><div class="l">'+c[0]+'</div><div class="v" style="color:'+c[2]+'">'+c[1]+'</div></div>';
+  });
+  document.getElementById('plcards').innerHTML=ch;
+  document.getElementById('plFleet').textContent=ix.fleet;
+}
+
+function plSetGrain(g){plState.grain=g;
+  document.querySelectorAll('#plgrain button').forEach(function(b){b.classList.toggle('active',b.dataset.g===g);});
+  plRender();}
+function plToggleModiv(cb){plState.modiv=cb.checked;plRender();}
+function plInit(){plSetGrain('week');}
+</script>
 </body></html>
