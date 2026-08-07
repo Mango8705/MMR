@@ -717,7 +717,7 @@ function gsSet(k,v){
   if(a==='prod')pRender();
   var b=document.getElementById('gsBadge');
   if(b)b.textContent=(GS.modiv?'ModivCare proposed rates':'ModivCare current rates')+
-    ' · '+(GS.overhead?'van + driver overhead on rows \u00b7 period cost held at company level':'direct cost only');
+    ' · '+(GS.overhead?'van + driver overhead on rows \u00b7 period cost included in company totals':'direct cost only');
 }
 
 setGrain('total');
@@ -764,12 +764,18 @@ function tAgg(){
      var dt=dayTot[r.date];var sh=(dt&&dt.trips>0)?(r.trips/dt.trips):0;
      g.rev+=r.rev;g.trips+=r.trips;g.pay+=dt?dt.pay*sh:0;g.fuel+=dt?dt.fuel*sh:0;g.ins+=dt?dt.ins*sh:0;g.ovh+=dt?(dt.ovh||0)*sh:0;g.days[r.date]=1;});
  }
+ /* company period cost (non-driver payroll, advertising, bank, one-offs) belongs
+    at COMPANY level: attach it to the weekly TOTAL object only - never to the
+    per-driver/broker/LOS breakdown objects, which stay contribution-basis. */
+ wks.forEach(function(w){
+   idx[w].per=(GS.overhead&&window._gsCompanyOvh)?((window._gsCompanyOvh[w.slice(0,7)]||0)*12/52):0;
+ });
  return {wks:wks,idx:idx};}
 function tVal(o,m){
  if(!o)return null;
  var dys=o.days?Object.keys(o.days).length:0;
  var vd=0; if(o.days){for(var _d in o.days)vd+=vansOn(_d);}   /* REAL van-days */
- var ovh=o.ovh||0;
+ var ovh=(o.ovh||0)+(o.per||0);   /* per only exists on company-total rows */
  var mgn=o.rev-o.pay-o.fuel-o.ins-ovh;
  switch(m){
   case 'rev':return o.rev; case 'pay':return o.pay; case 'fuel':return o.fuel; case 'ins':return o.ins; case 'ovh':return ovh;
@@ -1374,7 +1380,7 @@ function plInit(){plSetGrain('week');}
   gsApply();
   var b=document.getElementById('gsBadge');
   if(b)b.textContent=(GS.modiv?'ModivCare proposed rates':'ModivCare current rates')+
-    ' \u00b7 '+(GS.overhead?'van + driver overhead on rows \u00b7 period cost held at company level':'direct cost only');
+    ' \u00b7 '+(GS.overhead?'van + driver overhead on rows \u00b7 period cost included in company totals':'direct cost only');
   if(typeof setGrain==='function')setGrain(typeof grain!=='undefined'?grain:'total');
 }catch(e){if(window.console)console.error('gsApply failed',e);}})();
 </script>
