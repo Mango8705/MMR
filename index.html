@@ -696,7 +696,6 @@ function gsSet(k,v){
     ' · '+(GS.overhead?'fully loaded (overhead in)':'direct cost only');
 }
 
-gsApply();
 setGrain('total');
 (function(){var h=(location.hash||'').replace('#','');if(['fin','ue','brk','exp','prod','bd','trend','pl'].indexOf(h)>=0)showTab(h);})();
 </script><script>
@@ -1344,5 +1343,15 @@ function plSetGrain(g){plState.grain=g;
   plRender();}
 function plToggleModiv(cb){plState.modiv=cb.checked;plRender();}
 function plInit(){plSetGrain('week');}
+
+/* EXP is defined in a later script block than the globals code, so the model has to
+   be applied HERE - after every data array exists - then the open tab re-rendered. */
+(function(){try{
+  gsApply();
+  var b=document.getElementById('gsBadge');
+  if(b)b.textContent=(GS.modiv?'ModivCare proposed rates':'ModivCare current rates')+
+    ' \u00b7 '+(GS.overhead?'fully loaded (overhead in)':'direct cost only');
+  if(typeof setGrain==='function')setGrain(typeof grain!=='undefined'?grain:'total');
+}catch(e){if(window.console)console.error('gsApply failed',e);}})();
 </script>
 </body></html>
