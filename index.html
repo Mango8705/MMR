@@ -586,6 +586,12 @@ function doRefresh(btn){var a=document.querySelector('.tab.active');a=a?a.datase
    Insurance is NOT in the pool - it is already carried in each row's `ins`.
    Miscellaneous Expenses (4 atypical txns) stays excluded throughout. */
 
+/* real RouteGenie Vehicle IDs per operating day. Placeholder vans 53/54/55/61
+   are NOT vehicles and are excluded. f = fleet, d[date] = indices into f. */
+var VDAY={f:["51", "52", "56", "57", "58", "59", "60", "62"],d:{"2026-03-16":"013456","2026-03-17":"013456","2026-03-18":"0123456","2026-03-19":"012456","2026-03-23":"023456","2026-03-24":"0123456","2026-03-25":"0123456","2026-03-26":"012456","2026-03-27":"01245","2026-03-30":"012345","2026-03-31":"0123456","2026-03-20":"02345","2026-04-04":"0134","2026-04-01":"0123456","2026-04-02":"0134567","2026-04-03":"013457","2026-04-06":"01234567","2026-04-07":"01234567","2026-04-08":"01234567","2026-04-09":"01234567","2026-04-10":"012457","2026-04-13":"0123456","2026-04-14":"01234567","2026-04-15":"0234567","2026-04-16":"0234567","2026-04-17":"023457","2026-04-20":"0234567","2026-04-21":"01234567","2026-04-22":"01234567","2026-04-23":"01234567","2026-04-24":"01234567","2026-04-27":"01234567","2026-04-28":"01234567","2026-04-29":"0123567","2026-04-30":"01234567","2026-05-01":"01234567","2026-05-05":"01234567","2026-05-06":"01234567","2026-05-07":"01234567","2026-05-08":"0234567","2026-05-11":"0123456","2026-05-12":"01234567","2026-05-13":"01234567","2026-05-14":"0123467","2026-05-15":"01237","2026-05-18":"012367","2026-05-19":"0123567","2026-05-20":"0123567","2026-05-21":"0123457","2026-05-22":"0123457","2026-03-28":"12346","2026-04-18":"0237","2026-03-21":"012","2026-05-04":"01234567","2026-05-26":"01234567","2026-04-11":"134","2026-04-25":"0123","2026-05-25":"012356","2026-05-27":"01234567","2026-05-28":"0123567","2026-05-29":"0124567","2026-06-01":"0123456","2026-05-02":"06","2026-05-09":"027","2026-05-16":"013","2026-06-02":"01234567","2026-06-03":"01234567","2026-06-04":"01234567","2026-06-05":"0123567","2026-06-08":"01234567","2026-06-09":"01234567","2026-06-10":"034567","2026-06-11":"01234567","2026-06-12":"01234567","2026-06-15":"0134567","2026-06-17":"01234567","2026-06-19":"01234567","2026-06-22":"0134567","2026-06-24":"01234567","2026-06-25":"0134567","2026-06-26":"0134567","2026-06-29":"0134567","2026-07-01":"0134567","2026-07-02":"0134567","2026-07-03":"0134567","2026-05-23":"023","2026-06-16":"01234567","2026-05-30":"234","2026-06-13":"023","2026-06-20":"0134","2026-06-18":"01234567","2026-06-23":"0134567","2026-06-06":"023","2026-06-30":"0134567","2026-06-27":"0134","2026-07-06":"0134567","2026-07-08":"013467","2026-07-09":"03467","2026-07-10":"13467","2026-07-13":"13467","2026-07-14":"013467","2026-07-20":"13467","2026-07-21":"013467","2026-07-22":"013467","2026-07-23":"013467","2026-07-15":"03467","2026-07-07":"013467","2026-07-16":"03467","2026-07-17":"013467","2026-07-04":"0134","2026-07-11":"03467","2026-07-18":"46","2026-07-19":"6","2026-07-24":"01467","2026-07-27":"0467","2026-07-28":"01467","2026-07-25":"467","2026-07-29":"01467"}};
+var VANFLEET=VDAY.f.length;                 /* 8 real vans */
+function vansOn(date){var s=VDAY.d[date];return s?s.length:0;}
+
 var GS={modiv:true,overhead:true};
 
 function gsMoAvg(cat){var a=EXP.month.d[cat];if(!a)return 0;var s=0;a.forEach(function(x){s+=Math.abs(x||0);});return s/a.length;}
@@ -603,9 +609,10 @@ function gsOvhPool(ym,moPay,moTripsAll){
     if(moPay[y2]===undefined)continue;
     ndp+=Math.max(0,gsMo('Payroll Expenses',y2)-moPay[y2]);cnt++;}
   ndp=cnt?ndp/cnt:0;                         /* 3-mo trailing non-driver payroll */
-  var cal=0;['Software - Fleet (Autosist)','Advertising/Promotional','Bank Service Fee',
+  var cal=0;['Advertising/Promotional','Bank Service Fee',
              'Dues & Subscriptions','Processing Charge - Clover'].forEach(function(c){cal+=gsMoAvg(c);});
-  var rgdmv=gsMoAvg('Software - RouteGenie')+gsMoAvg('DMV');
+  /* per-VEHICLE software/registration - allocated on real van-days, not here */
+  var rgdmv=0;
   var wc=gsMoAvg("Worker's Comp");
   var small=0;['Stretcher','Tolls','Uber','Credit Card Processing Fees','Employee Recruitment Expense',
     'Business Service','Business Service - Apla Solutions','Meals','Medical Equipment',
@@ -634,13 +641,38 @@ function gsApply(){
   });
   RECDAY.forEach(function(r){r.rev=r._rev0+(GS.modiv?(byDrvDate[r.driver+'|'+r.date]||0):0);});
   REC.forEach(function(r){r.rev=r._rev0+(GS.modiv?(byDrvWeek[r.driver+'|'+r.week]||0):0);});
-  /* 3. overhead allocation by trips within each month */
-  var moTrips={},moPay={};
+  /* 3a. VEHICLE COSTS on real Vehicle IDs -------------------------------
+     Insurance / RouteGenie / Autosist / DMV are priced per vehicle. Charge a
+     day only for the vans that actually ran (VDAY), at the fleet rate; vans on
+     the books that did not run become idle-fleet cost, reported separately and
+     kept OUT of margin. Placeholder IDs 53/54/55/61 never enter this. */
+  var moDays={},moTrips={},moPay={},dayTrips={};
   RECDAY.forEach(function(r){var m=r.date.slice(0,7);
-    moTrips[m]=(moTrips[m]||0)+r.trips; moPay[m]=(moPay[m]||0)+r.pay;});
+    moTrips[m]=(moTrips[m]||0)+r.trips; moPay[m]=(moPay[m]||0)+r.pay;
+    dayTrips[r.date]=(dayTrips[r.date]||0)+r.trips;
+    (moDays[m]=moDays[m]||{})[r.date]=1;});
+  var insDay={},vehDay={},idleTot=0;
+  Object.keys(moDays).forEach(function(m){
+    var nd=Object.keys(moDays[m]).length||1;
+    var insRate=gsMo('Insurance',m)/VANFLEET/nd;                 /* $/van/day */
+    var vehRate=(gsMoAvg('Software - RouteGenie')+gsMoAvg('Software - Fleet (Autosist)')
+                 +gsMoAvg('DMV'))/VANFLEET/nd;
+    Object.keys(moDays[m]).forEach(function(dt){
+      var n=vansOn(dt);
+      insDay[dt]=insRate*n; vehDay[dt]=vehRate*n;
+      idleTot+=(VANFLEET-n)*(insRate+vehRate);});});
+  window._gsIdle=idleTot;
+  /* replace each row's insurance with its share of the real vehicle cost */
+  RECDAY.forEach(function(r){
+    var t=dayTrips[r.date]||0, sh=t>0?r.trips/t:0;
+    r.ins=(insDay[r.date]||0)*sh;
+    r._veh=(vehDay[r.date]||0)*sh;});
+  var wkIns={};
+  RECDAY.forEach(function(r){var k=r.driver+'|'+r.week;wkIns[k]=(wkIns[k]||0)+r.ins;});
+  REC.forEach(function(r){r.ins=wkIns[r.driver+'|'+r.week]||0;});
   var pool={};Object.keys(moTrips).forEach(function(m){pool[m]=gsOvhPool(m,moPay,moTrips);});
   RECDAY.forEach(function(r){var m=r.date.slice(0,7);
-    r.ovh=GS.overhead&&moTrips[m]?pool[m]*(r.trips/moTrips[m]):0;});
+    r.ovh=GS.overhead?((moTrips[m]?pool[m]*(r.trips/moTrips[m]):0)+(r._veh||0)):0;});
   /* REC (weekly) = sum of its RECDAY rows */
   var wkOvh={};
   RECDAY.forEach(function(r){var k=r.driver+'|'+r.week;wkOvh[k]=(wkOvh[k]||0)+(r.ovh||0);});
@@ -712,7 +744,8 @@ function tAgg(){
  return {wks:wks,idx:idx};}
 function tVal(o,m){
  if(!o)return null;
- var vd=o.vd?Object.keys(o.vd).length:0, dys=o.days?Object.keys(o.days).length:0;
+ var dys=o.days?Object.keys(o.days).length:0;
+ var vd=0; if(o.days){for(var _d in o.days)vd+=vansOn(_d);}   /* REAL van-days */
  var ovh=o.ovh||0;
  var mgn=o.rev-o.pay-o.fuel-o.ins-ovh;
  switch(m){
@@ -1181,10 +1214,12 @@ function plIndex(){
     var d=day[dt],n=Object.keys(d.drv).length;
     var w=wkD[d.w]||(wkD[d.w]={key:d.w,m:d.m,rev:0,pay:0,fuel:0,trips:0,up:0,days:0,peak:0,drv:{}});
     w.rev+=d.rev;w.pay+=d.pay;w.fuel+=d.fuel;w.trips+=d.trips;
-    if(n>0){w.days++;if(n>w.peak)w.peak=n;Object.keys(d.drv).forEach(function(k){w.drv[k]=1;});}
+    if(n>0){w.days++;var rv=vansOn(dt);if(rv>w.peak)w.peak=rv;w.vd=(w.vd||0)+rv;
+      Object.keys(d.drv).forEach(function(k){w.drv[k]=1;});}
     var m=moD[d.m]||(moD[d.m]={key:d.m,m:d.m,rev:0,pay:0,fuel:0,trips:0,up:0,days:0,peak:0,drv:{},vanwk:0});
     m.rev+=d.rev;m.pay+=d.pay;m.fuel+=d.fuel;m.trips+=d.trips;
-    if(n>0){m.days++;if(n>m.peak)m.peak=n;Object.keys(d.drv).forEach(function(k){m.drv[k]=1;});}
+    if(n>0){m.days++;var rv2=vansOn(dt);if(rv2>m.peak)m.peak=rv2;m.vd=(m.vd||0)+rv2;
+      Object.keys(d.drv).forEach(function(k){m.drv[k]=1;});}
   });
   BLDAY.forEach(function(r){
     if(r.broker!=='ModivCare')return;
@@ -1194,7 +1229,7 @@ function plIndex(){
   });
   /* month van-weeks = sum of each week's peak, for weeks whose start month matches */
   Object.keys(wkD).forEach(function(k){var mk=k.slice(0,7);if(moD[mk])moD[mk].vanwk+=wkD[k].peak;});
-  var fleet=0;Object.keys(wkD).forEach(function(k){if(wkD[k].peak>fleet)fleet=wkD[k].peak;});
+  var fleet=VANFLEET;   /* real fleet: 8 vans (placeholders 53/54/55/61 excluded) */
   /* month trips + driver pay, for non-driver payroll derivation */
   var moTrips={},moPay={};
   Object.keys(moD).forEach(function(k){moTrips[k]=moD[k].trips;moPay[k]=moD[k].pay;});
@@ -1218,9 +1253,11 @@ function plRows(grain){
     var wksInMo=4.333;
     var vanUnits=grain==='month'?o.vanwk:o.peak;
     var r={
-      key:k,grain:grain,days:o.days,drivers:Object.keys(o.drv).length,vans:o.peak,trips:o.trips,
-      revActual:o.rev, uplift:o.up,
-      rev:o.rev+(plState.modiv?o.up:0),
+      key:k,grain:grain,days:o.days,drivers:Object.keys(o.drv).length,vans:o.peak,
+      vanDays:o.vd||0, tpvd:(o.vd?o.trips/o.vd:0), trips:o.trips,
+      /* gsApply() has ALREADY applied the ModivCare uplift to o.rev - do not add it twice */
+      revActual:o.rev-(GS.modiv?o.up:0), uplift:GS.modiv?o.up:0,
+      rev:o.rev,
       pay:o.pay, fuel:o.fuel,
       ndp: grain==='month'?ndpMo:ndpMo/wksInMo,
       perVan: vanUnits*perVanWk,
