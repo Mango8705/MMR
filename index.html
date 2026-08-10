@@ -195,8 +195,7 @@ table.sa td.cell.drag{opacity:.5}
    <strong>Per-van</strong> &mdash; insurance, RouteGenie and DMV are charged a full week for every van that operated that week,
    with no proration for a slow day; vans that did not run appear in the <em>Idle&nbsp;fleet</em> column and are excluded from margin.
    <strong>Calendar-flat</strong> &mdash; software, advertising, bank fees and dues at monthly&nbsp;&times;&nbsp;12/52.
-   <strong>Trailing</strong> &mdash; auto repair, maintenance and supplies use a 3-month trailing average spread by trips,
-   so one large invoice does not distort the week it lands in.
+   <strong>Fleet wear</strong> &mdash; auto repair, maintenance, supplies and car wash at the month's ACTUAL register spend, spread by trips; lumpy repair months read lumpy by design (no trailing averages).
    <strong>Worker's Comp</strong> is accrued from quarterly billing.
    <br><br>
    <strong>Excluded:</strong> Miscellaneous Expenses ($20,284 across 4 atypical transactions, mostly a one-time fleet
@@ -599,27 +598,22 @@ function gsMo(cat,ym){var i=EXP.month.p.indexOf(ym);if(i<0||!EXP.month.d[cat])re
 
 function gsOvhPool(ym,moPay){
   /* Indirect cost, split by WHAT ACTUALLY DRIVES IT - not by share of trips.
+     ACTUALS ONLY: each month carries the register's actual spend for that
+     month. No trailing averages - lumpy months read lumpy on purpose.
        vanDay  - accrues per van in service   -> allocated on real van-days
-       drvDay  - priced per employee          -> allocated on driver-days
+       drvDay  - Worker's Comp, quarterly bill accrued monthly (only smoothing kept)
        cogs    - subcontracted stretcher work -> matched to stretcher trips
        period  - exists whether or not a van moves; held at COMPANY level and
                  never pushed onto a driver or broker row.                    */
   var i=EXP.month.p.indexOf(ym); if(i<0) return {vanDay:0,drvDay:0,cogs:0,period:0};
-  var lo=Math.max(0,i-2),n=i-lo+1;
-  var tr=0;
-  for(var k=lo;k<=i;k++){['Auto Repair','Maintenance','Merchandise & Supplies'].forEach(function(c){
-    var a=EXP.month.d[c]; if(a) tr+=Math.abs(a[k]||0);});}
-  tr=tr/n;                                        /* 3-mo trailing fleet wear */
-  var ndp=0,cnt=0;
-  for(var k2=lo;k2<=i;k2++){var y2=EXP.month.p[k2];
-    if(moPay[y2]===undefined)continue;
-    ndp+=Math.max(0,gsMo('Payroll Expenses',y2)-moPay[y2]);cnt++;}
-  ndp=cnt?ndp/cnt:0;
+  var tr=0;['Auto Repair','Maintenance','Merchandise & Supplies','Car Wash']
+    .forEach(function(c){tr+=gsMo(c,ym);});
+  var ndp=Math.max(0,gsMo('Payroll Expenses',ym)-(moPay[ym]||0));
   var period=ndp;
   ['Advertising/Promotional','Bank Service Fee','Dues & Subscriptions','Processing Charge - Clover',
    'Credit Card Processing Fees','Employee Recruitment Expense','Business Service',
    'Business Service - Apla Solutions','Meals','Medical Equipment','Other Services - Government',
-   'Unknown','Uber','Tolls'].forEach(function(c){period+=gsMo(c,ym);});
+   'Unknown','Uber','Tolls','Professional Training & Development'].forEach(function(c){period+=gsMo(c,ym);});
   return {vanDay:tr, drvDay:gsMoAvg("Worker's Comp"), cogs:gsMo('Stretcher',ym), period:period};
 }
 
@@ -1206,9 +1200,9 @@ var COSTMODEL={
   exclude:['Miscellaneous Expenses'],
   perVan:['Insurance','Software - RouteGenie','DMV'],
   calFlat:['Software - Fleet (Autosist)','Advertising/Promotional','Bank Service Fee','Dues & Subscriptions','Processing Charge - Clover'],
-  trail:['Auto Repair','Maintenance','Merchandise & Supplies'],
+  trail:['Auto Repair','Maintenance','Merchandise & Supplies','Car Wash'],
   wc:"Worker's Comp",
-  small:['Stretcher','Tolls','Uber','Credit Card Processing Fees','Employee Recruitment Expense','Business Service','Business Service - Apla Solutions','Meals','Medical Equipment','Other Services - Government','Unknown'],
+  small:['Stretcher','Tolls','Uber','Credit Card Processing Fees','Employee Recruitment Expense','Business Service','Business Service - Apla Solutions','Meals','Medical Equipment','Other Services - Government','Unknown','Professional Training & Development'],
   varTrip:6.28
 };
 var plState={grain:'week',get modiv(){return GS.modiv;}};
@@ -1216,21 +1210,15 @@ var plState={grain:'week',get modiv(){return GS.modiv;}};
 function plMo(cat,ym){var i=EXP.month.p.indexOf(ym);if(i<0||!EXP.month.d[cat])return 0;return Math.abs(EXP.month.d[cat][i]||0);}
 function plMoAvg(cat){var a=EXP.month.d[cat];if(!a)return 0;var s=0;a.forEach(function(x){s+=Math.abs(x||0);});return s/a.length;}
 function plMoSum(cats,ym){var s=0;cats.forEach(function(c){s+=plMo(c,ym);});return s;}
-function plNdp(ym,ix){ /* register payroll minus driver pay, 3-mo trailing to absorb
-                          4-vs-5 pay-run months and partial trip data */
-  var i=EXP.month.p.indexOf(ym);if(i<0)return 0;var lo=Math.max(0,i-2),s=0,n=0;
-  for(var k=lo;k<=i;k++){var ym2=EXP.month.p[k];
-    var reg=plMo('Payroll Expenses',ym2),drv=ix.moPay[ym2];
-    if(drv===undefined)continue;
-    s+=Math.max(0,reg-drv);n++;}
-  return n?s/n:0;
+function plNdp(ym,ix){ /* ACTUALS: register payroll minus driver pay, same month */
+  var reg=plMo('Payroll Expenses',ym),drv=ix.moPay[ym];
+  if(drv===undefined)return 0;
+  return Math.max(0,reg-drv);
 }
-function plTrail(ym){ /* 3-month trailing average of the trailing bucket */
-  var i=EXP.month.p.indexOf(ym);if(i<0)return 0;var lo=Math.max(0,i-2),n=i-lo+1,s=0;
-  for(var k=lo;k<=i;k++){COSTMODEL.trail.forEach(function(c){var a=EXP.month.d[c];if(a)s+=Math.abs(a[k]||0);});}
-  return s/n;
+function plTrail(ym){ /* ACTUALS: the month's register spend for the fleet-wear bucket */
+  var s=0;COSTMODEL.trail.forEach(function(c){s+=plMo(c,ym);});
+  return s;
 }
-
 function plIndex(){
   if(window._plIx)return window._plIx;
   var day={},wkD={},moD={};
@@ -1323,7 +1311,7 @@ function plRender(){
     '<th>'+(g==='week'?'Week':'Month')+'</th><th>Drv</th><th>Vans</th><th>Trips</th>'+
     '<th>Revenue</th><th>MODV&nbsp;uplift</th>'+
     '<th>Driver&nbsp;pay</th><th>Fuel&nbsp;(WEX)</th><th>Per-van</th>'+
-    '<th>Non-drv&nbsp;pay</th><th>Trailing</th><th>Small</th><th>Cal+WC</th>'+
+    '<th>Non-drv&nbsp;pay</th><th>Fleet&nbsp;wear</th><th>Small</th><th>Cal+WC</th>'+
     '<th>Total&nbsp;exp</th><th>NET</th><th>Margin</th><th>Idle&nbsp;fleet</th></tr></thead><tbody>';
   rows.forEach(function(r){
     var c=r.net>=0?'#16a34a':'#dc2626';
