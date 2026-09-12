@@ -101,7 +101,7 @@ table.dt tr:hover td{background:#fafbfc;}
     <h3>Per-payer profitability against the bar</h3>
     <table class="dt" id="byTable"><thead></thead><tbody></tbody></table>
     <p class="note" id="by-bar-note"></p>
-    <p class="note">Direct cost allocated at the driver-day level: each driver's daily pay+fuel divided by that day's trip count, applied per broker — the finest grain the source data supports (no per-trip pay/fuel breakdown exists). Contribution/Trip = Revenue/Trip − Direct Cost/Trip. Margin vs Bar = Contribution/Trip − the bar. Positive means that payer's average trip covers its share of company overhead and then some; this is a break-even/pricing benchmark, not a recommendation to drop any payer.</p>
+    <p class="note">Direct cost allocated at the driver-day level: each driver's daily pay+fuel divided by that day's trip count, applied per broker — the finest grain the source data supports (no per-trip pay/fuel breakdown exists). Contribution/Trip = Revenue/Trip − Direct Cost/Trip. Net Margin = Contribution/Trip − the bar. Positive means that payer's average trip covers its share of company overhead and then some; this is a break-even/pricing benchmark, not a recommendation to drop any payer.</p>
   </div>
 </div>
 
@@ -514,7 +514,7 @@ function ovRender(){
     return ovDriverSortDir===1 ? (bv-av) : (av-bv);
   });
   var dcols = [['driver','Driver'],['revPerTrip','Revenue/Trip'],['costPerTrip','Direct Cost/Trip'],
-    ['contribPerTrip','Contribution/Trip'],['marginVsBar','Margin vs Bar'],['marginPct','Gross Margin %'],['ptrips','Paid Trips']];
+    ['contribPerTrip','Contribution/Trip'],['marginVsBar','Net Margin'],['marginPct','Gross Margin %'],['ptrips','Paid Trips']];
   document.querySelector('#ovDriverTable thead').innerHTML = '<tr>'+dcols.map(function(c){
     return '<th onclick="ovDriverSortBy(\''+c[0]+'\')">'+c[1]+(ovDriverSortKey===c[0]?(ovDriverSortDir===1?' ▼':' ▲'):'')+'</th>';
   }).join('')+'</tr>';
@@ -544,7 +544,7 @@ function byRender(){
   var rows = ptPayerRows(range.from, range.to);
   var bar = ptBarForRange(range.from, range.to).bar;
   var cols = [['broker','Payer'],['revPerTrip','Revenue/Trip'],['costPerTrip','Direct Cost/Trip'],['indirectPerTrip','Indirect Cost/Trip'],
-    ['contribPerTrip','Contribution/Trip'],['marginVsBar','Margin vs Bar'],['marginPct','Gross Margin %'],['ptrips','Paid Trips']];
+    ['contribPerTrip','Contribution/Trip'],['marginVsBar','Net Margin'],['marginPct','Gross Margin %'],['ptrips','Paid Trips']];
   document.querySelector('#byTable thead').innerHTML = '<tr>'+cols.map(function(c){
     return '<th onclick="bySortBy(\''+c[0]+'\')">'+c[1]+(bySortKey===c[0]?(bySortDir===1?' ▼':' ▲'):'')+'</th>';
   }).join('')+'</tr>';
